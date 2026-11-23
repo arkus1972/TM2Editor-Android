@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Motyw" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/tlo</item>
+        <item name="android:statusBarColor">@color/tlo</item>
+        <item name="android:navigationBarColor">@color/tlo</item>
+    </style>
+    <color name="tlo">#0E0E11</color>
+    <color name="ikona_tlo">#1A1A1F</color>
+</resources>

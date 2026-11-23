@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>TM-2 Editor</title>
+<!-- TM2 Editor for Android — jeden plik: wygląd, rdzeń formatu i interfejs.
+     Wersja na Maca (SwiftUI) jest osobnym projektem: github.com/arkus1972/TM2Editor.
+     Licencja MIT. Bez internetu, bez zbierania danych. -->
+<style>
+:root {
+  --tlo: #f2f2f5; --karta: #ffffff; --tekst: #16161a; --opis: #6b6b76; --linia: #e1e1e8;
+  --akcent: #e8590c; --akcent-tekst: #ffffff; --pole: #f4f4f7; --ostrzezenie: #b45309; --zmiana: #2563eb;
+  --cien: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+  --f-etykieta: 17px; --f-wartosc: 17px; --f-opis: 14px; --f-tytul: 20px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tlo: #0e0e11; --karta: #1a1a1f; --tekst: #f1f1f4; --opis: #9a9aa6; --linia: #2a2a31;
+    --akcent: #ff7a2e; --akcent-tekst: #111; --pole: #24242b; --ostrzezenie: #f59e0b; --zmiana: #60a5fa;
+    --cien: none;
+  }
+}
+:root[data-theme="dark"] {
+  --tlo: #0e0e11; --karta: #1a1a1f; --tekst: #f1f1f4; --opis: #9a9aa6; --linia: #2a2a31;
+  --akcent: #ff7a2e; --akcent-tekst: #111; --pole: #24242b; --ostrzezenie: #f59e0b; --zmiana: #60a5fa;
+  --cien: none;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--tlo); color: var(--tekst);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: var(--f-wartosc); }
+button, select, input { font: inherit; color: inherit; }
+.ukryte { display: none !important; }
+
+/* Pasek górny */
+header { position: sticky; top: 0; z-index: 10; background: var(--tlo); border-bottom: 1px solid var(--linia);
+  padding: 8px 12px calc(8px) 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+.pasek { display: flex; align-items: center; gap: 6px; }
+.pasek h1 { font-size: var(--f-tytul); margin: 0 auto 0 4px; font-weight: 700; letter-spacing: .2px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.pasek h1 small { font-weight: 500; color: var(--opis); font-size: var(--f-opis); margin-left: 6px; }
+.ikona { min-width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--karta);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0 10px; font-weight: 600; font-size: 15px; }
+.ikona:disabled { opacity: .35; }
+.ikona.glowna { background: var(--akcent); border-color: var(--akcent); color: var(--akcent-tekst); }
+.ikona svg { width: 22px; height: 22px; }
+.kropka { width: 8px; height: 8px; border-radius: 50%; background: var(--akcent); display: inline-block; margin-left: 6px; }
+
+/* Wybór kitu */
+.kit { display: flex; gap: 6px; margin-top: 8px; }
+.kit select { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--karta);
+  padding: 0 10px; font-weight: 600; }
+
+/* Zakładki */
+nav.zakladki { display: flex; gap: 4px; margin-top: 8px; background: var(--pole); border-radius: 12px; padding: 4px; }
+nav.zakladki button, .segment button { flex: 1; height: 38px; border: 0; border-radius: 9px; background: transparent;
+  font-weight: 600; font-size: 15px; color: var(--opis); }
+nav.zakladki button[aria-selected="true"], .segment button[aria-selected="true"] { background: var(--karta); color: var(--tekst);
+  box-shadow: var(--cien); }
+.segment { display: flex; gap: 4px; background: var(--pole); border-radius: 12px; padding: 4px; margin: 0 0 12px; }
+.segment button { font-size: 14px; height: 36px; padding: 0 4px; }
+
+main { padding: 12px; padding-bottom: calc(90px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; }
+
+/* Sekcje i wiersze */
+section.karta { background: var(--karta); border-radius: 16px; box-shadow: var(--cien); margin: 0 0 14px; overflow: hidden;
+  border: 1px solid var(--linia); }
+section.karta > h2 { font-size: var(--f-opis); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--opis);
+  margin: 0; padding: 14px 16px 4px; }
+section.karta > p.podpis { margin: 0; padding: 0 16px 8px; color: var(--opis); font-size: var(--f-opis); }
+.wiersz { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--linia); min-height: 64px; }
+section.karta > h2 + .wiersz, section.karta > p.podpis + .wiersz { border-top: 0; }
+.wiersz .opis { flex: 1; min-width: 0; }
+.wiersz .etykieta { font-size: var(--f-etykieta); font-weight: 600; }
+.wiersz .zakres { font-size: var(--f-opis); color: var(--opis); margin-top: 2px; line-height: 1.3; }
+.wiersz.zmieniony .etykieta::after { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--zmiana); margin-left: 7px; vertical-align: middle; }
+.wiersz.pionowy { flex-direction: column; align-items: stretch; }
+
+/* Kontrolki */
+.liczba { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.liczba button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--pole);
+  font-size: 24px; line-height: 1; font-weight: 500; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.liczba button:active { background: var(--linia); }
+.liczba .wartosc { min-width: 92px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--f-wartosc);
+  background: transparent; border: 0; padding: 8px 2px; border-radius: 8px; }
+.liczba input.wartosc { background: var(--pole); outline: 2px solid var(--akcent); width: 92px; }
+select.lista { height: 44px; max-width: 58vw; min-width: 130px; border-radius: 12px; border: 1px solid var(--linia);
+  background: var(--pole); padding: 0 10px; font-weight: 600; font-size: var(--f-wartosc); }
+input.tekst { height: 44px; width: 100%; border-radius: 12px; border: 1px solid var(--linia); background: var(--pole);
+  padding: 0 12px; font-weight: 600; }
+.przelacznik { position: relative; width: 56px; height: 34px; flex-shrink: 0; }
+.przelacznik input { opacity: 0; width: 100%; height: 100%; margin: 0; position: absolute; z-index: 1; }
+.przelacznik span { position: absolute; inset: 0; border-radius: 34px; background: var(--linia); transition: background .15s; }
+.przelacznik span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 28px; height: 28px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.przelacznik input:checked + span { background: var(--akcent); }
+.przelacznik input:checked + span::after { transform: translateX(22px); }
+.przelacznik-tekst { font-size: var(--f-opis); color: var(--opis); width: 30px; text-align: right; }
+
+.rzad { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.rzad > * { flex: 1; min-width: 0; }
+.rzad select.lista { max-width: none; }
+.przycisk { height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--pole); font-weight: 600; padding: 0 14px; }
+.przycisk.akcent { background: var(--akcent); color: var(--akcent-tekst); border-color: var(--akcent); }
+
+/* Ekran startowy */
+.start { text-align: center; padding: 40px 20px; }
+.start h2 { font-size: 24px; margin: 0 0 8px; }
+.start p { color: var(--opis); line-height: 1.5; margin: 0 auto 20px; max-width: 460px; }
+.start .przycisk { height: 52px; padding: 0 28px; font-size: 18px; }
+.start ol { text-align: left; max-width: 460px; margin: 24px auto 0; color: var(--opis); line-height: 1.6; padding-left: 22px; }
+.uwaga { background: color-mix(in srgb, var(--ostrzezenie) 14%, transparent); color: var(--tekst); border-radius: 12px; padding: 10px 14px;
+  font-size: var(--f-opis); margin: 0 0 12px; border: 1px solid color-mix(in srgb, var(--ostrzezenie) 40%, transparent); }
+ul.pliki { margin: 0; padding: 4px 16px 14px 34px; font-size: var(--f-opis); color: var(--opis); line-height: 1.6;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; }
+
+/* Komunikat na dole */
+#komunikat { position: fixed; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 20; margin: 0 auto;
+  max-width: 560px; background: var(--tekst); color: var(--tlo); border-radius: 14px; padding: 12px 16px; font-size: 15px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; transform: translateY(12px); transition: opacity .2s, transform .2s;
+  pointer-events: none; }
+#komunikat.widoczny { opacity: 1; transform: none; }
+#komunikat.blad { background: #b91c1c; color: #fff; }
+
+/* Lista zmian */
+dialog { border: 0; border-radius: 18px; padding: 0; width: min(560px, calc(100vw - 24px)); max-height: 80vh; background: var(--karta);
+  color: var(--tekst); }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog h3 { margin: 0; padding: 16px 18px 8px; font-size: var(--f-tytul); }
+dialog ol { margin: 0; padding: 0 18px 8px 40px; max-height: 55vh; overflow: auto; font-size: 15px; line-height: 1.5; }
+dialog .stopka { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; }
+dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <div class="pasek">
+    <h1 id="nazwa">TM-2 Editor</h1>
+    <button class="ikona" id="otworz" type="button" aria-label="Open backup" title="Open">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    </button>
+    <button class="ikona" id="cofnij" type="button" aria-label="Undo" title="Undo" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
+    </button>
+    <button class="ikona" id="ponow" type="button" aria-label="Redo" title="Redo" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>
+    </button>
+    <button class="ikona" id="zmiany" type="button" aria-label="Changes" title="Changes" disabled>0</button>
+    <button class="ikona glowna" id="zapisz" type="button" aria-label="Save as new backup" title="Save" disabled>Save</button>
+  </div>
+  <div id="nawigacja" class="ukryte">
+    <div class="kit">
+      <button class="ikona" id="kit-poprzedni" type="button" aria-label="Previous kit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <select id="kit" aria-label="Kit"></select>
+      <button class="ikona" id="kit-nastepny" type="button" aria-label="Next kit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
+    <nav class="zakladki" role="tablist">
+      <button type="button" role="tab" data-z="kit">Kit</button>
+      <button type="button" role="tab" data-z="pady">Sounds</button>
+      <button type="button" role="tab" data-z="wejscia">Triggers</button>
+      <button type="button" role="tab" data-z="system">System</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div id="start" class="start">
+    <h2>Roland TM-2 backup editor</h2>
+    <p>Edit kits, effects, sounds, trigger settings and system settings of a TM-2 backup file. Your original file is never changed — saving always creates a new backup.</p>
+    <button class="przycisk akcent" id="otworz-start" type="button">Open Backup</button>
+    <ol>
+      <li>On the module: <b>BACKUP SAVE</b> to the SD card.</li>
+      <li>Open <b>ROLAND/TM-2/Backup/BKUP-xxx.TM0</b> from the card (card reader or a copy on the phone).</li>
+      <li>Edit, then <b>Save</b>. Put the new file in <b>ROLAND/TM-2/Backup</b> on the card.</li>
+      <li>On the module: <b>BACKUP LOAD</b>.</li>
+    </ol>
+  </div>
+  <div id="edytor" class="ukryte">
+    <div id="uwagi" class="uwaga ukryte"></div>
+    <div id="tresc"></div>
+  </div>
+</main>
+
+<input id="plik" type="file" class="ukryte" aria-hidden="true">
+<div id="komunikat" role="status" aria-live="polite"></div>
+
+<dialog id="lista-zmian">
+  <h3>Changes</h3>
+  <ol></ol>
+  <div class="stopka">
+    <button class="przycisk" id="cofnij-wszystko" type="button">Revert All</button>
+    <button class="przycisk akcent" id="zamknij-zmiany" type="button">Close</button>
+  </div>
+</dialog>
+<dialog id="pytanie">
+  <h3></h3>
+  <p></p>
+  <div class="stopka">
+    <button class="przycisk" type="button"></button>
+    <button class="przycisk akcent" type="button"></button>
+  </div>
+</dialog>
+
+<script id="tm2-rdzen">
+/* ==========================================================================
+   TM2 — rdzeń: wiedza o formacie pliku BACKUP Rolanda TM-2.
+   Przeniesione 1:1 z wersji na Maca (TM2Editor, Swift): BackupLayout,
+   FieldSpec, ParametryEfektow, TypyEfektow, TypyPadow, Instrumenty, KitEditor.
+   Bez DOM — ten sam kod testujemy w Node (testy/rdzen.test.js).
+   Każdy adres jest ZMIERZONY na module Arka; historia pomiarów jest
+   w repozytorium Maca (Mapowanie/dziennik.md) i w Projekcie claude.ai.
+   ========================================================================== */
+(function (global) {
+  'use strict';
+
+  // ---- Geometria pliku -----------------------------------------------------
+  const ROZMIAR = 124748;          // stały rozmiar backupu
+  const KIT_OD = 0x7C;             // kit 1 zaczyna się od nazwy
+  const KIT_KROK = 234;            // 66 B (nazwa + efekt) + 4 × 42 B
+  const SLOT_OD = 0x42;            // pierwszy slot brzmienia w kicie
+  const SLOT_KROK = 42;
+  const WEJSCIA_OD = 0x40;         // 4 rekordy ustawień wejść, globalne
+  const WEJSCIE_KROK = 15;
+  const EFEKT_OD = 0x18;           // typ efektu w kicie, potem 20 pól × 2 B
+  const EFEKT_DLUGOSC = 42;
+  const WAV_OD = 0x5AFA;           // tablica ścieżek WAV: 396 × 256 B
+  const WAV_DLUGOSC = 256;
+  const WSKAZNIK_KITU = 0x36;      // kit wybrany przy BACKUP SAVE (od zera)
+  const MD5_OD = ROZMIAR - 16;     // ostatnie 16 B = MD5 całej reszty
+
+  // ---- Listy wartości (jak na wyświetlaczu modułu) ---------------------------
+  const INSTRUMENTY = [
+    "001 Acous K", "002 Small K", "003 Soft K", "004 Round K", "005 Slammin' K", "006 Dance K",
+    "007 House K", "008 FatElec K", "009 DubStep K", "010 HipHop K", "011 Impact K", "012 Drumn' Bs K",
+    "013 Knock K", "014 DistTightK", "015 Thump K", "016 TR-808 K1", "017 TR-808 K2", "018 TR-909 K",
+    "019 Steel S", "020 Steel SR", "021 Small S", "022 Small SR", "023 Piccolo S", "024 Piccolo SR",
+    "025 Bright S", "026 Power S", "027 House S", "028 Electro S", "029 DubStep S1", "030 DubStep S2",
+    "031 DistPunchS", "032 HipHop S1", "033 HipHop S2", "034 Drumn' Bs S", "035 Jungle S", "036 Clap S",
+    "037 Metallic S", "038 TR-808 S", "039 TR-909 S", "040 XStick 1", "041 XStick 2", "042 XStick 3",
+    "043 XStick 4", "044 XStick 5", "045 ElecTom Hi", "046 ElecTom Lo", "047 RotoTom Hi", "048 RotoTom Md",
+    "049 RotoTom Lo", "050 Acous CHH", "051 Acous PHH", "052 TR-808 CHH", "053 TR-808 OHH", "054 TR-909 CHH",
+    "055 TR-909 OHH", "056 Club HH1", "057 Club HH2", "058 Noise HH", "059 Splash Cym", "060 StackedCym",
+    "061 ReverseCym", "062 ElectroCym", "063 Cowbell 1", "064 Cowbell 2", "065 Cowbell 3", "066 Cowbell 4",
+    "067 Cowbell808", "068 Tambrine 1", "069 Tambrine 2", "070 Tambrine 3", "071 WoodBlk Hi", "072 WoodBlk Lo",
+    "073 Claves", "074 Shaker", "075 VibraSlap", "076 Triangle", "077 TriangleMt", "078 Agogo Hi",
+    "079 Agogo Lo", "080 Timbale Hi", "081 Timbale HR", "082 Timbale Lo", "083 Conga Hi", "084 Conga Slap",
+    "085 Conga Lo", "086 Cajon Bass", "087 Cajon Slap", "088 Tabla Na", "089 Tabla Ge", "090 Tabla Ti",
+    "091 Timpani C", "092 Timpani G", "093 Gong", "094 Tree Chime", "095 TR-808Clap", "096 TR-909Clap",
+    "097 Live Clap", "098 Club Clap1", "099 Club Clap2", "100 Club Clap3", "101 Gate Clap", "102 Mini Clap",
+    "103 ThumpAtk 1", "104 ThumpAtk 2", "105 High Q", "106 Sine Shot", "107 Super Low", "108 Boom Out",
+    "109 Stomp", "110 Explosion", "111 SolidTight", "112 HardAttack", "113 Metal", "114 HeavyMetal",
+    "115 DanceHiLo1", "116 DanceHiLo2", "117 Crush HiLo", "118 DistImpact", "119 ElecSizzle", "120 Sub Lo 1",
+    "121 Sub Lo 2", "122 Sub Lo 3", "123 Dance Lo", "124 Elec Lo", "125 Attack 1", "126 Attack 2",
+    "127 Attack 3", "128 LoudSteel", "129 LoudSteelR", "130 BrassHiLo", "131 BrassHiLoR", "132 ImpactAtk",
+    "133 ImpactAtkR", "134 ImpactHiLo", "135 ShinyBuzz", "136 ShinyBuzzR", "137 Loud Buzz", "138 Loud BuzzR",
+    "139 Buzz Long", "140 Deep Lo", "141 SteelTone", "142 SteelToneR", "143 BrassTone", "144 BrassToneR",
+    "145 Dance HiLo", "146 Dance Buzz", "147 Dance Lo", "148 Clappin'", "149 BrightSlap", "150 Elec Sweep",
+    "151 Elec Phase", "152 Dist HiLo", "153 Dist Hi", "154 Dist Gate", "155 Tight T1", "156 Tight T2",
+    "157 Tight T3", "158 Tight T4", "159 Edge T1", "160 Edge T2", "161 Edge T3", "162 Edge T4",
+  ];
+
+  const LISTY = {
+    loCut: ['FLAT', '55 Hz', '110 Hz', '165 Hz', '200 Hz', '280 Hz', '340 Hz', '400 Hz', '500 Hz', '630 Hz', '800 Hz'],
+    hiCut: ['700 Hz', '1.0 kHz', '1.4 kHz', '2.0 kHz', '3.0 kHz', '4.0 kHz', '6.0 kHz', '8.0 kHz', '11 kHz', 'FLAT'],
+    czestotliwoscEQ: ['20.0 Hz', '25.0 Hz', '31.5 Hz', '40.0 Hz', '50.0 Hz', '63.0 Hz', '80.0 Hz', '100 Hz', '125 Hz',
+      '160 Hz', '200 Hz', '250 Hz', '315 Hz', '400 Hz', '500 Hz', '630 Hz', '800 Hz', '1.00 kHz', '1.25 kHz',
+      '1.60 kHz', '2.00 kHz', '2.50 kHz', '3.15 kHz', '4.00 kHz', '5.00 kHz', '6.30 kHz', '8.00 kHz', '10.0 kHz'],
+    dobrocQ: ['0.5', '1', '2', '4', '8', '16'],
+    ratio: ['2:1', '3:1', '4:1', '8:1', '100:1'],
+    knee: ['SOFT', 'HARD'],
+    polarity: ['UP', 'DOWN'],
+    typPoglosu: ['AMB', 'ROOM', 'HALL1', 'HALL2', 'PLATE'],
+    typPrzesteru: ['MID BST', 'CLN BST', 'TRBL BST', 'BLUES', 'CRUNCH', 'NATURAL', 'OD-1', 'T-SCREAM', 'TURBO OD',
+      'WARM OD', 'DIST', 'MILD DS', 'MID DS', 'RAT', 'GUV DS', 'DST+', 'MODERN DS', 'SOLID DS', 'STACK', 'LOUD',
+      'METAL', 'LEAD', "'60S FUZZ", 'OCT FUZZ', 'MUFF FUZZ'],
+    krzywa: ['LINEAR', 'EXP1', 'EXP2', 'LOG1', 'LOG2', 'LOUD1', 'LOUD2'],
+    dynamika: ['LINEAR', 'LOUD 1', 'LOUD 2', 'LOUD 3', 'MAX'],
+  };
+  const numery = (ile) => Array.from({ length: ile }, (_, i) => String(i + 1));
+  const limiter = Array.from({ length: 24 }, (_, i) => `${i - 24} dB`).concat(['OFF']);
+
+  // ---- Sposób pokazania wartości ---------------------------------------------
+  // Plik trzyma 0 i 3000, moduł pokazuje L15 i 300.0 ms — edytor mówi
+  // językiem modułu.
+  const W = {
+    zwykle: { t: 'plain' },
+    pan: { t: 'pan' },
+    offUjemne: { t: 'offNeg' },
+    offZero: { t: 'offZero' },
+    skala: (dzielnik, miejsca, jednostka) => ({ t: 'scaled', dzielnik, miejsca, jednostka }),
+    lista: (v) => ({ t: 'lista', v }),
+    dryWet: { t: 'dryWet' },
+    przes: (bias, jednostka) => ({ t: 'przes', bias, jednostka }),
+  };
+
+  function tekst(w, v) {
+    switch (w.t) {
+      case 'pan': return v === 0 ? 'CENTER' : (v < 0 ? 'L' + (-v) : 'R' + v);
+      case 'offNeg': return v < 0 ? 'OFF' : String(v);
+      case 'offZero': return v === 0 ? 'OFF' : String(v);
+      case 'scaled': {
+        if (!(w.dzielnik > 0)) return String(v);
+        const l = (v / w.dzielnik).toFixed(w.miejsca);
+        if (!w.jednostka) return l;
+        return w.jednostka === '%' ? l + '%' : l + ' ' + w.jednostka;
+      }
+      case 'lista': return (v >= 0 && v < w.v.length) ? w.v[v] : '#' + v;
+      case 'dryWet': return (100 - v) + ':' + v;
+      case 'przes': {
+        const x = v - w.bias;
+        const l = x > 0 ? '+' + x : String(x);
+        return w.jednostka ? l + ' ' + w.jednostka : l;
+      }
+      default: return String(v);
+    }
+  }
+
+  // ---- Kodowanie w pliku ------------------------------------------------------
+  // u8, biased, s8, u16, s16, enum, bool, ascii, utf16 — jak FieldEncoding.
+  const K = {
+    u8: (min, max) => ({ e: 'u8', min, max }),
+    biased: (bias, min, max) => ({ e: 'biased', bias, min, max }),
+    s8: (min, max) => ({ e: 's8', min, max }),
+    u16: (min, max) => ({ e: 'u16', min, max }),
+    s16: (min, max) => ({ e: 's16', min, max }),
+    lista: (v) => ({ e: 'enum', v, min: 0, max: v.length - 1 }),
+    bool: { e: 'bool', min: 0, max: 1 },
+    ascii: (dl) => ({ e: 'ascii', dl }),
+    utf16: (dl) => ({ e: 'utf16', dl }),
+  };
+  function dlugoscKodowania(k) {
+    switch (k.e) {
+      case 'u16': case 's16': return 2;
+      case 'ascii': case 'utf16': return k.dl;
+      default: return 1;
+    }
+  }
+
+  // ---- Pola -------------------------------------------------------------------
+  // zakres: 'global' (adres bezwzględny), 'kit' (względem bloku kitu),
+  // 'slot' (względem slotu brzmienia).
+  const pole = (id, etykieta, zakres, adres, kod, wysw) =>
+    ({ id, etykieta, zakres, adres, kod, wysw: wysw || (kod.e === 'enum' ? W.lista(kod.v) : W.zwykle) });
+
+  const POLA_KITU = [
+    pole('kit.name', 'Kit Name', 'kit', 0, K.utf16(22)),
+  ];
+
+  const POLA_SLOTU = [
+    pole('trig.level', 'Level', 'slot', 4, K.u8(0, 100)),
+    pole('trig.pitch', 'Pitch', 'slot', 6, K.s16(-120, 120)),
+    pole('trig.pan', 'Pan', 'slot', 8, K.biased(15, -15, 15), W.pan),
+    pole('trig.muteGroup', 'Mute Group', 'slot', 10, K.u8(0, 8)),
+    pole('trig.note', 'Note Number', 'slot', 12, K.s16(-1, 127), W.offUjemne),
+    pole('trig.loop', 'Loop', 'slot', 14, K.bool),
+    pole('trig.dynamics', 'Dynamics', 'slot', 16, K.lista(LISTY.dynamika)),
+    pole('trig.monoPoly', 'Mono / Poly', 'slot', 18, K.lista(['MONO', 'POLY'])),
+    pole('trig.effectSend', 'Effect Send', 'slot', 20, K.bool),
+    pole('trig.offset', 'Offset', 'slot', 26, K.u16(0, 3000), W.skala(10, 1, 'ms')),
+  ];
+
+  /** Ustawienia rekordu wejścia 1…4 (globalne, idą za padem, nie za kitem). */
+  function polaWejscia(rekord) {
+    const b = WEJSCIA_OD + (rekord - 1) * WEJSCIE_KROK;
+    return [
+      pole(`trigset.${rekord}.sensitivity`, 'Sensitivity', 'global', b + 0x02, K.u8(1, 32)),
+      pole(`trigset.${rekord}.threshold`, 'Threshold', 'global', b + 0x03, K.u8(0, 31)),
+      pole(`trigset.${rekord}.curve`, 'Curve', 'global', b + 0x04, K.u8(0, 6), W.lista(LISTY.krzywa)),
+      pole(`trigset.${rekord}.retrigCancel`, 'Retrig Cancel', 'global', b + 0x06, K.u8(1, 16)),
+      pole(`trigset.${rekord}.xtlkCancel`, 'XTLK Cancel', 'global', b + 0x08, K.u8(20, 80)),
+    ];
+  }
+
+  /** Pola gniazda 1…2 — zapisane w rekordzie HEAD gniazda (1 albo 3). */
+  function polaGniazda(gniazdo) {
+    const b = WEJSCIA_OD + (gniazdo * 2 - 2) * WEJSCIE_KROK;
+    return [
+      pole(`jack.${gniazdo}.input`, 'Input', 'global', b + 0x00, K.lista(['HEAD&RIM', 'PADx2'])),
+      pole(`jack.${gniazdo}.rimGain`, 'Rim Gain', 'global', b + 0x0A, K.u8(0, 80), W.skala(10, 1, '')),
+      pole(`jack.${gniazdo}.hrAdjust`, 'H/R Adjust', 'global', b + 0x09, K.u8(0, 80)),
+      pole(`jack.${gniazdo}.noiseCancel`, 'Noise Cancel', 'global', b + 0x0B, K.u8(0, 5), W.offZero),
+    ];
+  }
+
+  const POLA_SYSTEMU = [
+    pole('file.backupName', 'Backup Name', 'global', 0x0A, K.ascii(8)),
+    pole('sys.contrast', 'Contrast', 'global', 0x2C, K.u8(0, 9), W.lista(numery(10))),
+    pole('sys.brightness', 'Brightness', 'global', 0x2D, K.u8(0, 9), W.lista(numery(10))),
+    pole('sys.batteryType', 'Battery Type', 'global', 0x2E, K.lista(['ALKALINE', 'Ni-MH'])),
+    pole('sys.limiter', 'Limiter', 'global', 0x2F, K.u8(0, 24), W.lista(limiter)),
+    pole('sys.outGain', 'OutGain', 'global', 0x30, K.s8(-6, 12), W.przes(0, 'dB')),
+    pole('sys.trgPreview', 'TrgPreview', 'global', 0x31, K.bool),
+    pole('sys.trigLock', 'Trig Lock', 'global', 0x32, K.bool),
+    pole('sys.midiChannel', 'MIDI Ch', 'global', 0x33, K.u8(0, 15), W.lista(numery(16))),
+    pole('sys.programChangeRx', 'PrgChg Rx', 'global', 0x34, K.bool),
+    pole('sys.programChangeTx', 'PrgChg Tx', 'global', 0x35, K.bool),
+  ];
+
+  // ---- Efekty kitu --------------------------------------------------------------
+  // Kod w pliku ≠ pozycja na liście (dziury: 2, 6, 8, 11–13, 17, 18).
+  // Domyślne = wartości, które moduł wpisuje po wybraniu efektu (efekty-1.bin).
+  const EFEKTY = [
+    { kod: 0, nazwa: 'THRU', domyslne: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 1, nazwa: 'DELAY', domyslne: [0, 100, 100, 50, 1, 9, 50, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 3, nazwa: 'TAPE ECHO', domyslne: [2, 50, 50, 15, 15, 64, 64, 64, 0, 0, 0, 50, 100, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 4, nazwa: 'CHORUS', domyslne: [1, 40, 70, 10, 4, 9, 50, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 5, nazwa: 'FLANGER', domyslne: [0, 30, 0, 90, 100, 80, 50, 10, 50, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 7, nazwa: 'PHASER', domyslne: [2, 0, 50, 0, 50, 50, 50, 0, 50, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 9, nazwa: 'EQUALIZER', domyslne: [0, 20, 15, 2, 20, 19, 1, 20, 20, 9, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 10, nazwa: 'COMP', domyslne: [30, 10, 10, 2, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 14, nazwa: 'WAH', domyslne: [1, 1, 40, 20, 50, 50, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 15, nazwa: 'DIST', domyslne: [0, 50, 50, 50, 50, 100, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 16, nazwa: 'RINGMOD', domyslne: [64, 10, 0, 15, 15, 30, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { kod: 19, nazwa: 'REVERB', domyslne: [2, 30, 0, 1, 7, 10, 10, 100, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  ];
+  const efekt = (kod) => EFEKTY.find((e) => e.kod === kod) || null;
+
+  const fx = (kod, klucz, etykieta, adres, min, max, wysw) =>
+    pole(`fx.${kod}.${klucz}`, etykieta, 'kit', adres, K.u16(min, max), wysw || W.zwykle);
+  const fxL = (kod, klucz, etykieta, adres, lista) => fx(kod, klucz, etykieta, adres, 0, lista.length - 1, W.lista(lista));
+  const fxDW = (kod, adres) => fx(kod, 'dryWet', 'Dry-Wet', adres, 0, 100, W.dryWet);
+  const fxLvl = (kod, adres) => fx(kod, 'level', 'Level', adres, 0, 100);
+  const L = LISTY;
+
+  const PARAMETRY_EFEKTOW = {
+    1: [fx(1, 'dlyTime', 'DlyTime', 0x1C, 0, 350, W.skala(1, 0, 'ms')), fx(1, 'feedback', 'FeedBack', 0x20, 0, 99, W.skala(1, 0, '%')),
+      fxL(1, 'loCut', 'LoCut', 0x22, L.loCut), fxL(1, 'hiCut', 'HiCut', 0x24, L.hiCut), fxDW(1, 0x26), fxLvl(1, 0x28)],
+    3: [fx(3, 'repeatRate', 'RepeatRate', 0x1C, 0, 127), fx(3, 'intensity', 'Intensity', 0x1E, 0, 127),
+      fx(3, 'bass', 'Bass', 0x20, 0, 30, W.przes(15, 'dB')), fx(3, 'treble', 'Treble', 0x22, 0, 30, W.przes(15, 'dB')),
+      fxDW(3, 0x30), fxLvl(3, 0x32)],
+    4: [fx(4, 'rate', 'Rate', 0x1C, 0, 100), fx(4, 'depth', 'Depth', 0x1E, 0, 100),
+      fx(4, 'preDelay', 'PreDly', 0x20, 0, 80, W.skala(2, 1, 'ms')), fxL(4, 'loCut', 'LoCut', 0x22, L.loCut),
+      fxL(4, 'hiCut', 'HiCut', 0x24, L.hiCut), fxDW(4, 0x26), fxLvl(4, 0x28)],
+    5: [fx(5, 'rate', 'Rate', 0x1C, 0, 100), fx(5, 'depth', 'Depth', 0x20, 0, 100), fx(5, 'manual', 'Manual', 0x22, 0, 100),
+      fx(5, 'resonance', 'Resonance', 0x24, 0, 100), fxL(5, 'loCut', 'LoCut', 0x28, L.loCut), fxDW(5, 0x2A), fxLvl(5, 0x2C)],
+    7: [fx(7, 'rate', 'Rate', 0x1E, 0, 100), fx(7, 'depth', 'Depth', 0x22, 0, 100), fx(7, 'manual', 'Manual', 0x24, 0, 100),
+      fx(7, 'resonance', 'Resonance', 0x26, 0, 100), fxDW(7, 0x2A), fxLvl(7, 0x2C)],
+    9: [fxL(9, 'eq1Freq', 'Eq1Frq', 0x1E, L.czestotliwoscEQ), fxL(9, 'eq1Q', 'Eq1 Q', 0x20, L.dobrocQ),
+      fx(9, 'eq1Gain', 'Eq1 Gain', 0x22, 0, 40, W.przes(20, 'dB')), fxL(9, 'eq2Freq', 'Eq2Frq', 0x24, L.czestotliwoscEQ),
+      fxL(9, 'eq2Q', 'Eq2 Q', 0x26, L.dobrocQ), fx(9, 'eq2Gain', 'Eq2 Gain', 0x28, 0, 40, W.przes(20, 'dB')),
+      fx(9, 'level', 'Level', 0x2E, 0, 40, W.przes(20, 'dB'))],
+    10: [fx(10, 'threshold', 'Thrshd', 0x1A, 0, 48, W.przes(48, 'dB')), fx(10, 'attack', 'Attack', 0x1C, 0, 100),
+      fx(10, 'release', 'Release', 0x1E, 0, 99), fxL(10, 'ratio', 'Ratio', 0x20, L.ratio), fxL(10, 'knee', 'Knee', 0x22, L.knee),
+      fx(10, 'makeUp', 'Make Up', 0x24, 0, 24, W.przes(0, 'dB'))],
+    14: [fx(14, 'sens', 'Sens', 0x1E, 0, 100), fx(14, 'frequency', 'Frequency', 0x20, 0, 100), fx(14, 'peak', 'Peak', 0x22, 0, 100),
+      fxDW(14, 0x24), fxLvl(14, 0x26)],
+    15: [fxL(15, 'type', 'Type', 0x1A, L.typPrzesteru), fx(15, 'drive', 'Drive', 0x1C, 0, 120),
+      fx(15, 'bottom', 'Bottom', 0x1E, 0, 100, W.przes(50, '')), fx(15, 'tone', 'Tone', 0x20, 0, 100, W.przes(50, '')),
+      fx(15, 'wetLevel', 'Wet Level', 0x22, 0, 100), fxDW(15, 0x24), fxLvl(15, 0x26)],
+    16: [fx(16, 'frequency', 'Frequency', 0x1A, 0, 127), fx(16, 'sens', 'Sens', 0x1C, 0, 127),
+      fxL(16, 'polarity', 'Polarity', 0x1E, L.polarity), fx(16, 'loGain', 'Lo Gain', 0x20, 0, 30, W.przes(15, 'dB')),
+      fx(16, 'hiGain', 'Hi Gain', 0x22, 0, 30, W.przes(15, 'dB')), fxDW(16, 0x24), fxLvl(16, 0x26)],
+    19: [fxL(19, 'type', 'Rev Type', 0x1A, L.typPoglosu), fx(19, 'time', 'RevTime', 0x1C, 0, 99),
+      fx(19, 'preDelay', 'PreDly', 0x1E, 0, 100), fxL(19, 'loCut', 'LoCut', 0x20, L.loCut), fxL(19, 'hiCut', 'HiCut', 0x22, L.hiCut),
+      fxDW(19, 0x26), fxLvl(19, 0x28)],
+  };
+
+  // ---- Typy padów ---------------------------------------------------------------
+  // [kod, nazwa, czułość, próg, krzywa, bajt05, retrig, bajt07, H/R, rimGain, noise]
+  // Seria typy-1…9.bin. Zmiana typu NIE rusza XTLK Cancel ani Input.
+  const TYPY_PADOW = [
+    [0, 'KT-10', 10, 10, 0, 28, 6, 16, 0, 0, 0], [1, 'KD-7', 7, 10, 0, 16, 5, 16, 0, 0, 0],
+    [2, 'KD-8', 7, 8, 0, 16, 3, 16, 0, 0, 0], [3, 'KD-9', 8, 14, 0, 20, 3, 16, 0, 0, 0],
+    [4, 'KD-85', 10, 14, 0, 24, 5, 16, 0, 0, 0], [5, 'KD-120', 10, 12, 0, 28, 6, 16, 0, 0, 0],
+    [6, 'KD-140', 10, 12, 0, 28, 6, 16, 0, 0, 0], [7, 'PD-8', 8, 14, 0, 12, 1, 9, 0, 13, 0],
+    [8, 'PDX-6', 7, 8, 0, 20, 1, 9, 30, 10, 0], [9, 'PDX-8', 7, 8, 0, 20, 1, 9, 30, 10, 0],
+    [10, 'PDX-100', 6, 16, 0, 20, 1, 9, 26, 10, 0], [11, 'PD-85', 5, 10, 0, 20, 1, 9, 24, 10, 0],
+    [12, 'PD-105', 7, 18, 0, 20, 1, 9, 23, 10, 0], [13, 'PD-105X', 7, 18, 0, 20, 1, 9, 20, 10, 0],
+    [14, 'PD-108', 7, 16, 0, 20, 1, 9, 20, 10, 0], [15, 'PD-125', 7, 18, 0, 20, 1, 9, 15, 10, 0],
+    [16, 'PD-125X', 7, 18, 0, 20, 1, 9, 14, 10, 0], [17, 'PD-128', 7, 16, 0, 20, 1, 9, 11, 10, 0],
+    [18, 'CY-5', 8, 16, 0, 20, 8, 10, 0, 11, 0], [19, 'CY-8', 7, 20, 0, 20, 8, 10, 0, 8, 0],
+    [20, 'CY-12C', 7, 17, 0, 20, 8, 10, 0, 8, 0], [21, 'CY-13R', 7, 18, 0, 20, 8, 10, 0, 8, 0],
+    [22, 'CY-12RC', 7, 14, 0, 20, 8, 10, 0, 8, 0], [23, 'CY-14C', 7, 14, 0, 20, 8, 10, 0, 8, 0],
+    [24, 'CY-15R', 8, 16, 0, 20, 8, 10, 0, 8, 0], [25, 'BT-1', 12, 8, 0, 16, 6, 12, 0, 10, 0],
+    [26, 'BT-1 SENS', 12, 7, 0, 32, 6, 12, 0, 10, 0], [27, 'RT-10K', 8, 20, 0, 36, 8, 12, 0, 0, 0],
+    [28, 'RT-10S', 10, 18, 0, 28, 8, 10, 20, 9, 0], [29, 'RT-10T', 6, 20, 0, 32, 11, 10, 0, 0, 0],
+    [30, 'PAD1', 17, 16, 0, 40, 10, 12, 0, 11, 0], [31, 'PAD2', 17, 16, 0, 40, 10, 12, 20, 15, 0],
+    [32, 'RT-30K', 8, 15, 0, 36, 9, 12, 0, 0, 2], [33, 'RT-30HR', 8, 14, 0, 28, 8, 10, 20, 9, 3],
+    [34, 'RT30H_SNR', 8, 18, 0, 28, 8, 10, 0, 0, 0], [35, 'RT30H_TOM', 8, 21, 0, 32, 11, 24, 0, 0, 0],
+  ].map(([kod, nazwa, ...r]) => ({ kod, nazwa, r }));
+  /** Kolejność typów na liście w module (spisana przez Arka z wyświetlacza). */
+  const KOLEJNOSC_TYPOW = [1, 2, 3, 4, 5, 6, 0, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 32, 28, 33, 29, 34, 35, 30, 31];
+  const typPada = (kod) => TYPY_PADOW.find((t) => t.kod === kod) || null;
+
+  // ---- MD5 (RFC 1321) — moduł sprawdza sumę na końcu pliku ---------------------
+  function md5(dane) {
+    const s = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+      4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+    const T = new Uint32Array(64);
+    for (let i = 0; i < 64; i++) T[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+    const n = dane.length;
+    const dl = (((n + 8) >>> 6) + 1) * 64;
+    const b = new Uint8Array(dl);
+    b.set(dane);
+    b[n] = 0x80;
+    const bity = n * 8;
+    b[dl - 8] = bity & 0xFF; b[dl - 7] = (bity >>> 8) & 0xFF; b[dl - 6] = (bity >>> 16) & 0xFF; b[dl - 5] = (bity >>> 24) & 0xFF;
+    const wysokie = Math.floor(n / 0x20000000);
+    b[dl - 4] = wysokie & 0xFF; b[dl - 3] = (wysokie >>> 8) & 0xFF;
+    let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+    const M = new Uint32Array(16);
+    for (let o = 0; o < dl; o += 64) {
+      for (let i = 0; i < 16; i++) M[i] = b[o + i * 4] | (b[o + i * 4 + 1] << 8) | (b[o + i * 4 + 2] << 16) | (b[o + i * 4 + 3] << 24);
+      let A = a0, B = b0, C = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) { F = (B & C) | (~B & D); g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) & 15; }
+        else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) & 15; }
+        else { F = C ^ (B | ~D); g = (7 * i) & 15; }
+        const tmp = D; D = C; C = B;
+        const x = (A + F + T[i] + M[g]) | 0;
+        B = (B + ((x << s[i]) | (x >>> (32 - s[i])))) | 0;
+        A = tmp;
+      }
+      a0 = (a0 + A) | 0; b0 = (b0 + B) | 0; c0 = (c0 + C) | 0; d0 = (d0 + D) | 0;
+    }
+    const wynik = new Uint8Array(16);
+    [a0, b0, c0, d0].forEach((w, i) => { for (let j = 0; j < 4; j++) wynik[i * 4 + j] = (w >>> (8 * j)) & 0xFF; });
+    return wynik;
+  }
+
+  // ---- Backup: odczyt, zapis, historia zmian ------------------------------------
+  class Backup {
+    /** Sprawdza plik i zwraca listę zastrzeżeń (puste = wszystko w porządku). */
+    static sprawdz(bajty) {
+      const uwagi = [];
+      if (bajty.length !== ROZMIAR) {
+        uwagi.push(`This is not a TM-2 backup: ${bajty.length} bytes instead of ${ROZMIAR}.`);
+        return { blad: true, uwagi };
+      }
+      const magia = String.fromCharCode(bajty[0], bajty[1], bajty[2], bajty[3]);
+      if (magia !== 'TM-2') {
+        uwagi.push('The file does not start with "TM-2".');
+        return { blad: true, uwagi };
+      }
+      const suma = md5(bajty.subarray(0, MD5_OD));
+      const zgodna = suma.every((x, i) => x === bajty[MD5_OD + i]);
+      if (!zgodna) uwagi.push('The checksum does not match. The editor will write a correct one when you save.');
+      return { blad: false, uwagi };
+    }
+
+    constructor(bajty, nazwaPliku) {
+      this.b = new Uint8Array(bajty);
+      this.oryginal = new Uint8Array(bajty);
+      this.nazwaPliku = nazwaPliku || 'BKUP.TM0';
+      this.zmiany = [];
+      this.ponow = [];
+      this.zapisanaDlugosc = 0;
+    }
+
+    get maNiezapisane() { return this.zmiany.length !== this.zapisanaDlugosc; }
+
+    // -- adresy
+    kitOd(kit) { return KIT_OD + (kit - 1) * KIT_KROK; }
+    slotOd(kit, slot) { return this.kitOd(kit) + SLOT_OD + (slot - 1) * SLOT_KROK; }
+    adres(p, kit, slot) {
+      if (p.zakres === 'global') return p.adres;
+      if (p.zakres === 'kit') return this.kitOd(kit) + p.adres;
+      return this.slotOd(kit, slot) + p.adres;
+    }
+    u16(o) { return this.b[o] | (this.b[o + 1] << 8); }
+
+    // -- odczyt pola
+    wartosc(p, kit = 1, slot = 1) {
+      const o = this.adres(p, kit, slot);
+      const k = p.kod;
+      switch (k.e) {
+        case 'u8': case 'enum': return this.b[o];
+        case 'bool': return this.b[o] === 0 ? 0 : 1;
+        case 'biased': return this.b[o] - k.bias;
+        case 's8': return this.b[o] > 127 ? this.b[o] - 256 : this.b[o];
+        case 'u16': return this.u16(o);
+        case 's16': { const v = this.u16(o); return v > 32767 ? v - 65536 : v; }
+        case 'ascii': {
+          let t = '';
+          for (let i = 0; i < k.dl; i++) { const c = this.b[o + i]; t += (c >= 32 && c < 127) ? String.fromCharCode(c) : ' '; }
+          return t.replace(/ +$/, '');
+        }
+        case 'utf16': {
+          let t = '';
+          for (let i = 0; i + 1 < k.dl; i += 2) t += String.fromCharCode(this.b[o + i] | (this.b[o + i + 1] << 8));
+          return t.replace(/ +$/, '');
+        }
+      }
+      return null;
+    }
+
+    /** Bajty, które zapisałaby wartość — albo wyjątek z opisem, czemu nie. */
+    kodujWartosc(p, v) {
+      const k = p.kod;
+      if (k.e === 'ascii') {
+        const z = [...String(v)].filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127).map((c) => c.charCodeAt(0));
+        if (z.length > k.dl) throw new Error(`${p.etykieta}: up to ${k.dl} characters.`);
+        while (z.length < k.dl) z.push(0x20);
+        return z;
+      }
+      if (k.e === 'utf16') {
+        const t = String(v);
+        if (t.length > k.dl / 2) throw new Error(`${p.etykieta}: up to ${k.dl / 2} characters.`);
+        const z = [];
+        for (let i = 0; i < k.dl / 2; i++) { const c = i < t.length ? t.charCodeAt(i) : 0x20; z.push(c & 0xFF, c >> 8); }
+        return z;
+      }
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < k.min || n > k.max) throw new Error(`${p.etykieta}: allowed ${k.min}…${k.max}.`);
+      switch (k.e) {
+        case 'u8': case 'enum': case 'bool': return [n];
+        case 'biased': return [n + k.bias];
+        case 's8': return [n & 0xFF];
+        case 'u16': case 's16': return [n & 0xFF, (n >> 8) & 0xFF];
+      }
+      throw new Error('Unknown encoding');
+    }
+
+    // -- zapis z historią: jedna zmiana = lista fragmentów, jedno cofnięcie
+    zapiszFragmenty(opis, fragmenty, klucz) {
+      // Kolejne kroki tego samego pola w krótkim czasie (przytrzymany [+])
+      // to JEDNA zmiana: na liście zmian 30 → 45, a nie piętnaście pozycji.
+      const ostatnia = this.zmiany[this.zmiany.length - 1];
+      const teraz = Date.now();
+      if (klucz && ostatnia && ostatnia.klucz === klucz && !this.ponow.length
+          && this.zmiany.length > this.zapisanaDlugosc && teraz - ostatnia.czas < 2000) {
+        const [o, nowe] = fragmenty[0];
+        const x = ostatnia.f[0];
+        this.b.set(nowe, o);
+        x.nowe = Array.from(nowe);
+        ostatnia.opis = opis;
+        ostatnia.czas = teraz;
+        if (x.stare.every((c, i) => c === x.nowe[i])) this.zmiany.pop();   // wróciło do punktu wyjścia
+        return true;
+      }
+      const f = fragmenty
+        .map(([o, nowe]) => ({ o, stare: Array.from(this.b.subarray(o, o + nowe.length)), nowe: Array.from(nowe) }))
+        .filter((x) => x.stare.some((c, i) => c !== x.nowe[i]));
+      if (!f.length) return false;
+      f.forEach((x) => this.b.set(x.nowe, x.o));
+      this.zmiany.push({ opis, f, klucz, czas: teraz });
+      this.ponow = [];
+      return true;
+    }
+
+    ustaw(p, v, kit = 1, slot = 1) {
+      // Parametr efektu ma sens tylko przy swoim efekcie (fx.<kod>.…).
+      const m = /^fx\.(\d+)\./.exec(p.id);
+      if (m && this.kodEfektu(kit) !== Number(m[1])) throw new Error(`${p.etykieta} belongs to a different kit effect.`);
+      const bajty = this.kodujWartosc(p, v);
+      const gdzie = p.zakres === 'global' ? '' : (p.zakres === 'kit' ? `Kit ${kit} ` : `Kit ${kit} pad ${slot} `);
+      return this.zapiszFragmenty(`${gdzie}${p.etykieta} → ${tekstPola(p, v)}`, [[this.adres(p, kit, slot), bajty]],
+        `${p.id}/${kit}/${slot}`);
+    }
+
+    cofnij() {
+      const z = this.zmiany.pop();
+      if (!z) return null;
+      [...z.f].reverse().forEach((x) => this.b.set(x.stare, x.o));
+      this.ponow.push(z);
+      return z.opis;
+    }
+    ponowZmiane() {
+      const z = this.ponow.pop();
+      if (!z) return null;
+      z.f.forEach((x) => this.b.set(x.nowe, x.o));
+      this.zmiany.push(z);
+      return z.opis;
+    }
+
+    // -- kity
+    nazwaKitu(kit) { return this.wartosc(POLA_KITU[0], kit); }
+    biezacyKit() { const k = this.b[WSKAZNIK_KITU] + 1; return k >= 1 && k <= 99 ? k : 1; }
+
+    // -- efekt kitu
+    kodEfektu(kit) { return this.u16(this.kitOd(kit) + EFEKT_OD); }
+    efekt(kit) { return efekt(this.kodEfektu(kit)); }
+    parametryEfektu(kit) { return PARAMETRY_EFEKTOW[this.kodEfektu(kit)] || []; }
+    /** Jak moduł: typ + wartości domyślne wszystkich 20 pól naraz. */
+    ustawEfekt(kit, kod) {
+      const e = efekt(kod);
+      if (!e) throw new Error('Unknown effect');
+      const bajty = [e.kod, ...e.domyslne].flatMap((v) => [v & 0xFF, v >> 8]);
+      return this.zapiszFragmenty(`Kit ${kit} Effect → ${e.nazwa}`, [[this.kitOd(kit) + EFEKT_OD, bajty]]);
+    }
+
+    // -- brzmienie slotu: wewnętrzne (bank 1) albo plik WAV z karty (bank 2)
+    bank(kit, slot) { return this.u16(this.slotOd(kit, slot) + 2); }
+    numerBrzmienia(kit, slot) { return this.u16(this.slotOd(kit, slot)); }
+    adresSciezki(kit, slot) { return WAV_OD + ((kit - 1) * 4 + (slot - 1)) * WAV_DLUGOSC; }
+    sciezkaSampla(kit, slot) {
+      if (this.bank(kit, slot) !== 2) return null;
+      const o = this.adresSciezki(kit, slot);
+      let t = '';
+      for (let i = 0; i < WAV_DLUGOSC && this.b[o + i] !== 0; i++) t += String.fromCharCode(this.b[o + i]);
+      return t || null;
+    }
+    opisBrzmienia(kit, slot) {
+      const s = this.sciezkaSampla(kit, slot);
+      if (s) return 'SD: ' + s;
+      const n = this.numerBrzmienia(kit, slot);
+      if (this.bank(kit, slot) === 1 && n < INSTRUMENTY.length) return INSTRUMENTY[n];
+      return '#' + n;
+    }
+    ustawBrzmienie(kit, slot, numer) {
+      if (!(numer >= 0 && numer < INSTRUMENTY.length)) throw new Error('Unknown sound');
+      return this.zapiszFragmenty(`Kit ${kit} pad ${slot} Instrument → ${INSTRUMENTY[numer]}`,
+        [[this.slotOd(kit, slot), [numer & 0xFF, numer >> 8, 1, 0]]]);
+    }
+    /** Moduł szuka pliku PO ŚCIEŻCE względem ROLAND/TM-2/WAVE; numer może być 0. */
+    przypiszSampel(kit, slot, sciezka) {
+      const t = String(sciezka).trim().replace(/\\/g, '/').replace(/^\/+/, '');
+      if (!t || t.length >= WAV_DLUGOSC || ![...t].every((c) => c.charCodeAt(0) >= 0x20 && c.charCodeAt(0) < 0x7F)) {
+        throw new Error('The file path must be plain ASCII (no Polish letters) and shorter than 256 characters.');
+      }
+      if (!/\.wav$/i.test(t)) throw new Error('The TM-2 plays WAV files only (name ending in .wav).');
+      const wpis = new Array(WAV_DLUGOSC).fill(0);
+      for (let i = 0; i < t.length; i++) wpis[i] = t.charCodeAt(i);
+      return this.zapiszFragmenty(`Kit ${kit} pad ${slot} Instrument → SD: ${t}`,
+        [[this.slotOd(kit, slot), [0, 0, 2, 0]], [this.adresSciezki(kit, slot), wpis]]);
+    }
+    /** Wszystkie ścieżki sampli w backupie, bez powtórzeń (do listy plików na kartę). */
+    wszystkieSample() {
+      const z = new Set();
+      for (let k = 1; k <= 99; k++) for (let s = 1; s <= 4; s++) { const p = this.sciezkaSampla(k, s); if (p) z.add(p); }
+      return [...z];
+    }
+
+    // -- typ pada (rekordy wejść 1…4)
+    rekordOd(rekord) { return WEJSCIA_OD + (rekord - 1) * WEJSCIE_KROK; }
+    typPada(rekord) { return typPada(this.b[this.rekordOd(rekord) + 1]); }
+    /** Jak moduł: kod + wartości domyślne typu; XTLK Cancel i Input nietknięte. */
+    ustawTypPada(rekord, kod) {
+      const t = typPada(kod);
+      if (!t) throw new Error('Unknown pad type');
+      const o = this.rekordOd(rekord);
+      const xtlk = this.b[o + 0x08];
+      const [czul, prog, krzywa, b05, retrig, b07, hr, rim, noise] = t.r;
+      const bajty = [t.kod, czul, prog, krzywa, b05, retrig, b07, xtlk, hr, rim, noise];
+      return this.zapiszFragmenty(`${nazwaRekordu(rekord)} Pad Type → ${t.nazwa}`, [[o + 1, bajty]]);
+    }
+    /** Czy moduł pokazuje pole gniazda (tam, gdzie moduł ma „--", edytor milczy). */
+    modulPokazuje(p) {
+      const m = /^jack\.(\d)\.(\w+)$/.exec(p.id);
+      if (!m) return true;
+      const glowny = Number(m[1]) * 2 - 1;
+      const headRim = this.b[this.rekordOd(glowny)] === 0;
+      if (m[2] === 'rimGain' || m[2] === 'hrAdjust') return headRim;
+      if (m[2] === 'noiseCancel') {
+        const t = this.typPada(glowny);
+        return headRim && !!t && (t.nazwa === 'RT-30K' || t.nazwa === 'RT-30HR');
+      }
+      return true;
+    }
+
+    // -- zapis pliku: kopia z poprawną sumą MD5 na końcu
+    doZapisu() {
+      const wynik = new Uint8Array(this.b);
+      wynik.set(md5(wynik.subarray(0, MD5_OD)), MD5_OD);
+      return wynik;
+    }
+    oznaczZapisane() { this.zapisanaDlugosc = this.zmiany.length; }
+  }
+
+  function nazwaRekordu(rekord) {
+    const g = Math.floor((rekord - 1) / 2) + 1;
+    return rekord % 2 === 1 ? `TRIG IN ${g}` : `TRIG IN ${g} pad 2`;
+  }
+
+  function tekstPola(p, v) {
+    if (p.kod.e === 'ascii' || p.kod.e === 'utf16') return `"${v}"`;
+    if (p.kod.e === 'bool') return v ? 'ON' : 'OFF';
+    return tekst(p.wysw, v);
+  }
+
+  /** Opis zakresu pod parametrem — reguła Arka: liczby rosnące równo → zakres,
+   *  teksty i liczby nieregularne → wszystkie pozycje po przecinkach. */
+  function opisListy(pozycje) {
+    const liczba = (t) => {
+      const m = /^([+-]?[0-9.]+)(.*)$/.exec(t);
+      if (!m || isNaN(parseFloat(m[1]))) return null;
+      return { l: parseFloat(m[1]), j: m[2] };
+    };
+    const lic = [...pozycje];
+    const dopisek = [];
+    while (lic.length && liczba(lic[lic.length - 1]) === null) dopisek.unshift(lic.pop());
+    const w = lic.map(liczba);
+    if (lic.length < 3 || w.some((x) => x === null) || new Set(w.map((x) => x.j)).size !== 1) return pozycje.join(', ');
+    const krok = w[1].l - w[0].l;
+    const rowno = krok !== 0 && w.every((x, i) => i === 0 || Math.abs((x.l - w[i - 1].l) - krok) < 1e-9);
+    if (!rowno) return pozycje.join(', ');
+    return [lic[0] + ' … ' + lic[lic.length - 1], ...dopisek].join(', ');
+  }
+  function opisZakresu(p) {
+    const k = p.kod;
+    if (k.e === 'ascii' || k.e === 'utf16') return `Up to ${k.e === 'ascii' ? k.dl : k.dl / 2} characters`;
+    if (k.e === 'bool') return '';
+    if (p.wysw.t === 'lista') return opisListy(p.wysw.v);
+    return tekst(p.wysw, k.min) + ' … ' + tekst(p.wysw, k.max);
+  }
+
+  global.TM2 = {
+    ROZMIAR, WAV_OD, WAV_DLUGOSC, LISTY, INSTRUMENTY, EFEKTY, PARAMETRY_EFEKTOW, TYPY_PADOW, KOLEJNOSC_TYPOW,
+    POLA_KITU, POLA_SLOTU, POLA_SYSTEMU, polaWejscia, polaGniazda, nazwaRekordu,
+    Backup, md5, tekst, tekstPola, opisZakresu, opisListy, efekt, typPada,
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script id="tm2-interfejs">
+/* ==========================================================================
+   Interfejs: telefon/tablet, jedna strona. Rdzeń (TM2) nie wie nic o DOM.
+   Na Androidzie pliki otwiera i zapisuje opakowanie (obiekt TM2Android,
+   systemowy wybór pliku); w zwykłej przeglądarce — <input type=file>
+   i pobranie pliku. Zapis ZAWSZE tworzy nowy plik — oryginału nie ruszamy.
+   ========================================================================== */
+(function () {
+  'use strict';
+  const T = window.TM2;
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, wl = {}, ...dzieci) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(wl)) {
+      if (k === 'class') e.className = v;
+      else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v);
+    }
+    for (const d of dzieci.flat()) if (d !== null && d !== undefined && d !== false) e.append(d.nodeType ? d : String(d));
+    return e;
+  };
+  const android = window.TM2Android || null;
+
+  // ---- Stan ------------------------------------------------------------------
+  const stan = { backup: null, kit: 1, zakladka: 'kit', pad: 1, rekord: 1 };
+  const pamietaj = () => { try { localStorage.setItem('tm2.widok', JSON.stringify({ zakladka: stan.zakladka, pad: stan.pad, rekord: stan.rekord })); } catch (e) { /* brak pamięci — trudno */ } };
+  try { Object.assign(stan, JSON.parse(localStorage.getItem('tm2.widok') || '{}')); } catch (e) { /* pierwszy raz */ }
+
+  // ---- Komunikaty ------------------------------------------------------------
+  let zegarKomunikatu;
+  function komunikat(tekst, blad) {
+    const k = $('#komunikat');
+    k.textContent = tekst;
+    k.className = 'widoczny' + (blad ? ' blad' : '');
+    clearTimeout(zegarKomunikatu);
+    zegarKomunikatu = setTimeout(() => { k.className = ''; }, blad ? 5000 : 2600);
+  }
+  function pytaj(tytul, tresc, tak, nie) {
+    return new Promise((ok) => {
+      const d = $('#pytanie');
+      d.querySelector('h3').textContent = tytul;
+      d.querySelector('p').textContent = tresc;
+      const [bNie, bTak] = d.querySelectorAll('.stopka button');
+      bTak.textContent = tak; bNie.textContent = nie;
+      bTak.onclick = () => { d.close(); ok(true); };
+      bNie.onclick = () => { d.close(); ok(false); };
+      d.showModal();
+    });
+  }
+
+  // ---- Pliki -------------------------------------------------------------------
+  async function otworz() {
+    if (stan.backup && stan.backup.maNiezapisane) {
+      const tak = await pytaj('Discard changes?', 'This backup has changes that are not saved yet.', 'Discard', 'Cancel');
+      if (!tak) return;
+    }
+    if (android) android.otworzPlik();
+    else $('#plik').click();
+  }
+
+  function wczytaj(bajty, nazwa) {
+    const s = T.Backup.sprawdz(bajty);
+    if (s.blad) { komunikat(s.uwagi.join(' '), true); return; }
+    stan.backup = new T.Backup(bajty, nazwa);
+    stan.kit = stan.backup.biezacyKit();
+    $('#uwagi').textContent = s.uwagi.join(' ');
+    $('#uwagi').classList.toggle('ukryte', !s.uwagi.length);
+    rysuj();
+    komunikat(`Opened ${nazwa}`);
+  }
+
+  // Wywoływane przez opakowanie Androida.
+  window.tm2PlikOtwarty = (base64, nazwa) => {
+    const bin = atob(base64);
+    const b = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    wczytaj(b, nazwa || 'BKUP.TM0');
+  };
+  window.tm2PlikZapisany = (ok, nazwa) => {
+    if (ok) zapisano(nazwa);
+    else if (nazwa) komunikat('Not saved: ' + nazwa, true);
+  };
+  window.tm2MaNiezapisane = () => !!(stan.backup && stan.backup.maNiezapisane);
+  window.tm2Blad = (tekst) => komunikat(tekst, true);
+
+  /** BKUP-004.TM0 → BKUP-005.TM0. Moduł pokazuje backupy po tej nazwie. */
+  function nastepnaNazwa(nazwa) {
+    const m = /BKUP-(\d{3})/i.exec(nazwa || '');
+    const n = m ? Math.min(parseInt(m[1], 10) + 1, 999) : 1;
+    return `BKUP-${String(n).padStart(3, '0')}.TM0`;
+  }
+
+  function zapisz() {
+    const b = stan.backup;
+    if (!b) return;
+    const aktywny = document.activeElement;
+    if (aktywny && aktywny.blur) aktywny.blur();   // zatwierdza wpisywany tekst
+    const dane = b.doZapisu();
+    const nazwa = nastepnaNazwa(b.nazwaPliku);
+    if (android) {
+      let bin = '';
+      for (let i = 0; i < dane.length; i += 0x8000) bin += String.fromCharCode.apply(null, dane.subarray(i, i + 0x8000));
+      android.zapiszPlik(nazwa, btoa(bin));
+    } else {
+      const a = el('a', { href: URL.createObjectURL(new Blob([dane], { type: 'application/octet-stream' })), download: nazwa });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      zapisano(nazwa);
+    }
+  }
+  function zapisano(nazwa) {
+    stan.backup.oznaczZapisane();
+    stan.backup.nazwaPliku = nazwa || stan.backup.nazwaPliku;
+    odswiezPasek();
+    const sample = stan.backup.wszystkieSample().length;
+    komunikat(`Saved ${nazwa}. Put it in ROLAND/TM-2/Backup on the SD card, then BACKUP LOAD on the module.`
+      + (sample ? ` The WAV files must be in ROLAND/TM-2/WAVE.` : ''));
+  }
+
+  // ---- Odczyt tekstu wpisanego z klawiatury (odwrotność TM2.tekst) ------------
+  function odczytaj(w, t) {
+    t = String(t).trim().toUpperCase();
+    if (!t) return null;
+    const calk = (s) => (/^[+-]?\d+$/.test(s.trim()) ? parseInt(s, 10) : null);
+    const bezJedn = (s, j) => { s = s.trim(); j = (j || '').toUpperCase(); if (j && s.endsWith(j)) s = s.slice(0, -j.length); return s.trim(); };
+    switch (w.t) {
+      case 'pan':
+        if (t === 'C' || t === 'CENTER') return 0;
+        if (/^L\d+$/.test(t)) return -parseInt(t.slice(1), 10);
+        if (/^R\d+$/.test(t)) return parseInt(t.slice(1), 10);
+        return calk(t);
+      case 'offNeg': return t === 'OFF' ? -1 : calk(t);
+      case 'offZero': return t === 'OFF' ? 0 : calk(t);
+      case 'scaled': {
+        const s = bezJedn(t, w.jednostka).replace(',', '.');
+        if (!/^[+-]?\d+(\.\d+)?$/.test(s)) return null;
+        const v = parseFloat(s) * w.dzielnik;
+        return Math.abs(v - Math.round(v)) < 1e-6 ? Math.round(v) : null;   // między krokami — odmowa
+      }
+      case 'dryWet': {
+        const c = t.split(':');
+        if (c.length === 2) { const a = calk(c[0]), b = calk(c[1]); return a !== null && b !== null && a + b === 100 ? b : null; }
+        return calk(t);
+      }
+      case 'przes': { const v = calk(bezJedn(t, w.jednostka)); return v === null ? null : v + w.bias; }
+      default: return calk(t);
+    }
+  }
+
+  // ---- Wiersze -----------------------------------------------------------------
+  function zmieniony(p, kit, slot) {
+    const b = stan.backup;
+    const o = b.adres(p, kit, slot);
+    const dl = p.kod.e === 'u16' || p.kod.e === 's16' ? 2 : (p.kod.dl || 1);
+    for (let i = 0; i < dl; i++) if (b.b[o + i] !== b.oryginal[o + i]) return true;
+    return false;
+  }
+
+  function wiersz(etykieta, zakres, kontrolka, opcje = {}) {
+    return el('div', { class: 'wiersz' + (opcje.pionowy ? ' pionowy' : '') + (opcje.zmieniony ? ' zmieniony' : '') },
+      el('div', { class: 'opis' }, el('div', { class: 'etykieta' }, etykieta), zakres ? el('div', { class: 'zakres' }, zakres) : null),
+      kontrolka);
+  }
+
+  /** Wiersz zwykłego pola. `poZmianie` — gdy pole zmienia układ (np. Input). */
+  function wierszPola(p, kit = 1, slot = 1, poZmianie) {
+    const b = stan.backup;
+    const w = wiersz(p.etykieta, T.opisZakresu(p), null, { zmieniony: zmieniony(p, kit, slot) });
+    const oznacz = () => w.classList.toggle('zmieniony', zmieniony(p, kit, slot));
+    const ustaw = (v) => {
+      try { if (b.ustaw(p, v, kit, slot)) odswiezPasek(); oznacz(); if (poZmianie) poZmianie(); return true; }
+      catch (e) { komunikat(e.message, true); return false; }
+    };
+    let k;
+    const v = b.wartosc(p, kit, slot);
+    if (p.kod.e === 'ascii' || p.kod.e === 'utf16') {
+      w.classList.add('pionowy');
+      const max = p.kod.e === 'ascii' ? p.kod.dl : p.kod.dl / 2;
+      k = el('input', { class: 'tekst', type: 'text', maxlength: max, value: v, autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+      const zatwierdz = () => { if (k.value !== b.wartosc(p, kit, slot)) { if (!ustaw(k.value)) k.value = b.wartosc(p, kit, slot); else if (p.id === 'kit.name') odswiezListeKitow(); } };
+      k.addEventListener('change', zatwierdz);
+      k.addEventListener('keydown', (e) => { if (e.key === 'Enter') k.blur(); });
+      w.append(k);
+      return w;
+    }
+    if (p.kod.e === 'bool') {
+      const pole = el('input', { type: 'checkbox', role: 'switch', 'aria-label': p.etykieta });
+      pole.checked = !!v;
+      const napis = el('span', { class: 'przelacznik-tekst' }, v ? 'ON' : 'OFF');
+      pole.addEventListener('change', () => { ustaw(pole.checked ? 1 : 0); napis.textContent = pole.checked ? 'ON' : 'OFF'; });
+      k = el('div', { class: 'liczba' }, napis, el('label', { class: 'przelacznik' }, pole, el('span')));
+      w.append(k);
+      return w;
+    }
+    if (p.wysw.t === 'lista') {
+      k = el('select', { class: 'lista', 'aria-label': p.etykieta });
+      for (let i = p.kod.min; i <= p.kod.max; i++) k.append(el('option', { value: i }, T.tekst(p.wysw, i)));
+      if (v < p.kod.min || v > p.kod.max) k.prepend(el('option', { value: v }, '#' + v));
+      k.value = v;
+      k.addEventListener('change', () => { if (!ustaw(Number(k.value))) k.value = b.wartosc(p, kit, slot); });
+      w.append(k);
+      return w;
+    }
+    w.append(kontrolkaLiczby(p, () => b.wartosc(p, kit, slot), ustaw));
+    return w;
+  }
+
+  /** − wartość +. Przytrzymanie przycisku powtarza krok; dotknięcie wartości
+   *  pozwala wpisać liczbę albo to, co pokazuje moduł („L15", „300.0 ms"). */
+  function kontrolkaLiczby(p, wez, ustaw) {
+    const pokaz = el('button', { class: 'wartosc', type: 'button', 'aria-label': p.etykieta });
+    const odswiez = () => { pokaz.textContent = T.tekst(p.wysw, wez()); };
+    odswiez();
+    const krok = (d) => {
+      const n = Math.min(p.kod.max, Math.max(p.kod.min, wez() + d));
+      if (n !== wez()) { ustaw(n); odswiez(); }
+    };
+    const przycisk = (znak, d) => {
+      const b = el('button', { type: 'button', 'aria-label': (d < 0 ? 'Decrease ' : 'Increase ') + p.etykieta }, znak);
+      // Krok dopiero przy puszczeniu palca, nie przy dotknięciu — przewijanie
+      // listy palcem położonym na [+] nie może zmieniać wartości (przewijanie
+      // kończy się zdarzeniem pointercancel). Przytrzymanie = powtarzanie.
+      let zegar, powtorz, aktywny = false, powtarzal = false;
+      const stop = () => { clearTimeout(zegar); clearInterval(powtorz); aktywny = false; };
+      b.addEventListener('pointerdown', () => {
+        aktywny = true; powtarzal = false;
+        zegar = setTimeout(() => {
+          powtarzal = true; krok(d);
+          let n = 0; powtorz = setInterval(() => { n++; krok(n > 20 ? d * 5 : d); }, 70);
+        }, 450);
+      });
+      b.addEventListener('pointerup', () => { const tak = aktywny && !powtarzal; stop(); if (tak) krok(d); });
+      ['pointerleave', 'pointercancel'].forEach((z) => b.addEventListener(z, stop));
+      // Klawiatura / czytnik ekranu: zwykłe „click" bez wskaźnika (detail 0).
+      b.addEventListener('click', (e) => { if (e.detail === 0) krok(d); });
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+      return b;
+    };
+    pokaz.addEventListener('click', () => {
+      const pole = el('input', { class: 'wartosc', type: 'text', inputmode: p.wysw.t === 'plain' ? 'numeric' : 'text', value: pokaz.textContent });
+      pokaz.replaceWith(pole);
+      pole.focus(); pole.select();
+      let koniec = false;
+      const zakoncz = (zapisz) => {
+        if (koniec) return; koniec = true;
+        if (zapisz) {
+          const n = odczytaj(p.wysw, pole.value);
+          if (n === null || n < p.kod.min || n > p.kod.max) komunikat(`${p.etykieta}: ${T.opisZakresu(p)}`, true);
+          else if (n !== wez()) ustaw(n);
+        }
+        odswiez();
+        pole.replaceWith(pokaz);
+      };
+      pole.addEventListener('keydown', (e) => { if (e.key === 'Enter') zakoncz(true); if (e.key === 'Escape') zakoncz(false); });
+      pole.addEventListener('blur', () => zakoncz(true));
+    });
+    return el('div', { class: 'liczba' }, przycisk('−', -1), pokaz, przycisk('+', 1));
+  }
+
+  function karta(tytul, podpis, ...wiersze) {
+    return el('section', { class: 'karta' }, el('h2', {}, tytul), podpis ? el('p', { class: 'podpis' }, podpis) : null, ...wiersze);
+  }
+
+  function segment(etykiety, wybrany, wybierz) {
+    return el('div', { class: 'segment', role: 'tablist' }, etykiety.map((t, i) =>
+      el('button', { type: 'button', role: 'tab', 'aria-selected': String(wybrany === i + 1), onclick: () => wybierz(i + 1) }, t)));
+  }
+
+  // ---- Zakładki -----------------------------------------------------------------
+  function zakladkaKit() {
+    const b = stan.backup, kit = stan.kit;
+    const wybor = el('select', { class: 'lista', 'aria-label': 'Kit Effect' });
+    T.EFEKTY.forEach((e) => wybor.append(el('option', { value: e.kod }, e.nazwa)));
+    const biezacy = b.efekt(kit);
+    if (!biezacy) wybor.prepend(el('option', { value: b.kodEfektu(kit) }, '#' + b.kodEfektu(kit)));
+    wybor.value = b.kodEfektu(kit);
+    wybor.addEventListener('change', () => { b.ustawEfekt(kit, Number(wybor.value)); odswiezPasek(); rysujTresc(); });
+    const parametry = b.parametryEfektu(kit).map((p) => wierszPola(p, kit));
+    return [
+      karta('Kit ' + String(kit).padStart(2, '0'), null, wierszPola(T.POLA_KITU[0], kit)),
+      karta('Effect', null,
+        wiersz('Kit Effect', 'Changing it resets the effect’s parameters to their defaults, as on the module.', wybor),
+        ...parametry),
+    ];
+  }
+
+  const NAZWY_PADOW = ['1 HEAD', '1 RIM', '2 HEAD', '2 RIM'];
+  const PELNE_NAZWY = ['TRIG IN 1 · head', 'TRIG IN 1 · rim', 'TRIG IN 2 · head', 'TRIG IN 2 · rim'];
+
+  function wierszBrzmienia(kit, slot) {
+    const b = stan.backup;
+    const sciezka = b.sciezkaSampla(kit, slot);
+    const SD = 'sd';
+    const wybor = el('select', { class: 'lista', 'aria-label': 'Instrument' });
+    if (sciezka) wybor.append(el('option', { value: SD }, 'SD: ' + sciezka));
+    else if (b.bank(kit, slot) !== 1) wybor.append(el('option', { value: 'x' }, '#' + b.numerBrzmienia(kit, slot)));
+    T.INSTRUMENTY.forEach((n, i) => wybor.append(el('option', { value: i }, n)));
+    if (!sciezka) wybor.append(el('option', { value: SD }, 'WAV file on the SD card…'));
+    wybor.value = sciezka ? SD : (b.bank(kit, slot) === 1 ? String(b.numerBrzmienia(kit, slot)) : 'x');
+
+    const pole = el('input', { class: 'tekst', type: 'text', value: sciezka || '', placeholder: 'e.g. KICKS/MyKick.wav',
+      autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'WAV file path' });
+    const przypisz = el('button', { class: 'przycisk akcent', type: 'button' }, 'Assign');
+    const rzadSD = el('div', { class: 'rzad' + (sciezka ? '' : ' ukryte') }, pole, przypisz);
+    rzadSD.lastChild.style.flex = '0 0 auto';
+    const podpowiedz = el('div', { class: 'zakres' + (sciezka ? '' : ' ukryte') },
+      'Path inside ROLAND/TM-2/WAVE on the card. Copy the WAV file there yourself (44.1 kHz, 16-bit). The module finds it by name.');
+
+    const w = wiersz('Instrument', '162 internal sounds or a WAV file from the SD card', null, { pionowy: true });
+    w.querySelector('.opis').append(el('div', { class: 'rzad' }, wybor), rzadSD, podpowiedz);
+    wybor.addEventListener('change', () => {
+      if (wybor.value === SD) { rzadSD.classList.remove('ukryte'); podpowiedz.classList.remove('ukryte'); pole.focus(); return; }
+      if (wybor.value === 'x') return;
+      b.ustawBrzmienie(kit, slot, Number(wybor.value)); odswiezPasek(); rysujTresc();
+    });
+    const zatwierdz = () => {
+      try { b.przypiszSampel(kit, slot, pole.value); odswiezPasek(); rysujTresc(); komunikat('Assigned ' + b.sciezkaSampla(kit, slot)); }
+      catch (e) { komunikat(e.message, true); }
+    };
+    przypisz.addEventListener('click', zatwierdz);
+    pole.addEventListener('keydown', (e) => { if (e.key === 'Enter') zatwierdz(); });
+    return w;
+  }
+
+  function zakladkaPady() {
+    const kit = stan.kit, slot = stan.pad;
+    return [
+      segment(NAZWY_PADOW, slot, (n) => { stan.pad = n; pamietaj(); rysujTresc(); }),
+      karta('Sound — ' + PELNE_NAZWY[slot - 1], null, wierszBrzmienia(kit, slot), ...T.POLA_SLOTU.map((p) => wierszPola(p, kit, slot))),
+    ];
+  }
+
+  function zakladkaWejscia() {
+    const b = stan.backup, r = stan.rekord;
+    const gniazdo = Math.floor((r - 1) / 2) + 1;
+    const typ = el('select', { class: 'lista', 'aria-label': 'Pad Type' });
+    T.KOLEJNOSC_TYPOW.forEach((kod) => typ.append(el('option', { value: kod }, T.typPada(kod).nazwa)));
+    const kod = b.b[b.rekordOd(r) + 1];
+    if (!b.typPada(r)) typ.prepend(el('option', { value: kod }, '#' + kod));
+    typ.value = kod;
+    typ.addEventListener('change', () => { b.ustawTypPada(r, Number(typ.value)); odswiezPasek(); rysujTresc(); });
+
+    const pola = [...T.polaGniazda(gniazdo), ...T.polaWejscia(r)].filter((p) => b.modulPokazuje(p));
+    const drugiPad = r % 2 === 0;
+    return [
+      segment(NAZWY_PADOW, r, (n) => { stan.rekord = n; pamietaj(); rysujTresc(); }),
+      karta('Trigger Input — ' + PELNE_NAZWY[r - 1],
+        drugiPad ? 'Global, for every kit. On the module these belong to the SECOND pad of this jack and only apply when Input is PADx2.'
+          : 'Global, for every kit: these settings follow the pad, not the sound.',
+        wiersz('Pad Type', 'Changing it resets Sensitivity, Threshold, Curve and the rest to the type’s defaults, as on the module.', typ),
+        ...pola.map((p) => wierszPola(p, 1, 1, p.id.endsWith('.input') ? rysujTresc : null))),
+    ];
+  }
+
+  function zakladkaSystem() {
+    const b = stan.backup;
+    const sample = b.wszystkieSample().sort();
+    return [
+      karta('System', 'Module settings (SHIFT + INST › SYSTEM) and the name shown in BACKUP LOAD.',
+        ...T.POLA_SYSTEMU.map((p) => wierszPola(p))),
+      karta('SD Card Samples', sample.length
+        ? `${sample.length} WAV file${sample.length > 1 ? 's' : ''} this backup plays. They must be in ROLAND/TM-2/WAVE on the card:`
+        : 'This backup plays only internal sounds.',
+        sample.length ? el('ul', { class: 'pliki' }, sample.map((s) => el('li', {}, s))) : null),
+    ];
+  }
+
+  // ---- Rysowanie -----------------------------------------------------------------
+  function odswiezListeKitow() {
+    const b = stan.backup, s = $('#kit');
+    s.replaceChildren(...Array.from({ length: 99 }, (_, i) =>
+      el('option', { value: i + 1 }, String(i + 1).padStart(2, '0') + '  ' + (b.nazwaKitu(i + 1) || ''))));
+    s.value = stan.kit;
+  }
+
+  function odswiezPasek() {
+    const b = stan.backup;
+    $('#cofnij').disabled = !b || !b.zmiany.length;
+    $('#ponow').disabled = !b || !b.ponow.length;
+    $('#zapisz').disabled = !b;
+    $('#zmiany').disabled = !b || !b.zmiany.length;
+    $('#zmiany').textContent = b && b.zmiany.length ? String(b.zmiany.length) : '0';
+    $('#nazwa').replaceChildren(b ? b.nazwaPliku : 'TM-2 Editor', b && b.maNiezapisane ? el('span', { class: 'kropka', title: 'Unsaved changes' }) : '');
+  }
+
+  function rysujTresc() {
+    const tresc = $('#tresc');
+    const y = window.scrollY;
+    const z = { kit: zakladkaKit, pady: zakladkaPady, wejscia: zakladkaWejscia, system: zakladkaSystem }[stan.zakladka] || zakladkaKit;
+    tresc.replaceChildren(...z());
+    document.querySelectorAll('nav.zakladki button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.z === stan.zakladka)));
+    $('.kit').classList.toggle('ukryte', stan.zakladka === 'wejscia' || stan.zakladka === 'system');
+    window.scrollTo(0, y);
+  }
+
+  function rysuj() {
+    const jest = !!stan.backup;
+    $('#start').classList.toggle('ukryte', jest);
+    $('#edytor').classList.toggle('ukryte', !jest);
+    $('#nawigacja').classList.toggle('ukryte', !jest);
+    odswiezPasek();
+    if (!jest) return;
+    odswiezListeKitow();
+    rysujTresc();
+  }
+
+  function zmienKit(n) {
+    stan.kit = Math.min(99, Math.max(1, n));
+    $('#kit').value = stan.kit;
+    rysujTresc();
+  }
+
+  // ---- Zdarzenia ----------------------------------------------------------------
+  function start() {
+    $('#otworz').addEventListener('click', otworz);
+    $('#otworz-start').addEventListener('click', otworz);
+    $('#zapisz').addEventListener('click', zapisz);
+    $('#cofnij').addEventListener('click', () => { const o = stan.backup.cofnij(); if (o) komunikat('Undo: ' + o); odswiezListeKitow(); rysuj(); });
+    $('#ponow').addEventListener('click', () => { const o = stan.backup.ponowZmiane(); if (o) komunikat('Redo: ' + o); odswiezListeKitow(); rysuj(); });
+    $('#zmiany').addEventListener('click', () => {
+      const d = $('#lista-zmian');
+      d.querySelector('ol').replaceChildren(...stan.backup.zmiany.map((z) => el('li', {}, z.opis)));
+      d.showModal();
+    });
+    $('#zamknij-zmiany').addEventListener('click', () => $('#lista-zmian').close());
+    $('#cofnij-wszystko').addEventListener('click', async () => {
+      $('#lista-zmian').close();
+      if (await pytaj('Revert all changes?', 'Every change since the file was opened will be undone.', 'Revert All', 'Cancel')) {
+        while (stan.backup.cofnij()); rysuj(); komunikat('All changes reverted');
+      }
+    });
+    $('#kit').addEventListener('change', (e) => zmienKit(Number(e.target.value)));
+    $('#kit-poprzedni').addEventListener('click', () => zmienKit(stan.kit - 1));
+    $('#kit-nastepny').addEventListener('click', () => zmienKit(stan.kit + 1));
+    document.querySelectorAll('nav.zakladki button').forEach((b) => b.addEventListener('click', () => {
+      stan.zakladka = b.dataset.z; pamietaj(); window.scrollTo(0, 0); rysujTresc();
+    }));
+    $('#plik').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      f.arrayBuffer().then((buf) => wczytaj(new Uint8Array(buf), f.name));
+      e.target.value = '';
+    });
+    window.addEventListener('beforeunload', (e) => { if (window.tm2MaNiezapisane()) { e.preventDefault(); e.returnValue = ''; } });
+    rysuj();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+</body>
+</html>

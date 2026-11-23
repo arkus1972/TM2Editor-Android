@@ -1,0 +1,41 @@
+name: Build APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Najpierw rdzeń formatu: jeśli testy nie przejdą, APK nie powstaje.
+      - name: Testy rdzenia (format pliku BACKUP)
+        run: node testy/rdzen.test.js
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Budowanie APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Nazwa pliku z numerem buildu
+        run: cp app/build/outputs/apk/debug/app-debug.apk TM2Editor-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TM2Editor-${{ github.run_number }}
+          path: TM2Editor-${{ github.run_number }}.apk
+          if-no-files-found: error

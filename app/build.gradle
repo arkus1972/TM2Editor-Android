@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.arkus1972.tm2editor'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.arkus1972.tm2editor'
+        minSdk 26
+        targetSdk 35
+        // Numer wersji rośnie z każdym buildem w GitHub Actions (GITHUB_RUN_NUMBER),
+        // dzięki temu nowy APK instaluje się NA starym, bez odinstalowywania.
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int)
+        versionName "1.0." + (System.getenv('GITHUB_RUN_NUMBER') ?: '0')
+    }
+
+    // Stały klucz testowy z repozytorium (hasło „android", jak zwykły klucz
+    // debug). Bez niego każdy build w chmurze miałby inny klucz i Android
+    // odmawiałby aktualizacji. To NIE jest klucz do Sklepu Play.
+    signingConfigs {
+        testowy {
+            storeFile file('testowy.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.testowy
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.testowy
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
