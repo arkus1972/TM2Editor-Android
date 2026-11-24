@@ -145,6 +145,12 @@ dialog.pelny[open] { display: flex; }
 .pozycja-kitu .nazwa { flex: 1; min-width: 0; }
 .pozycja-kitu .pliki { display: block; font-weight: 400; font-size: var(--f-opis); color: var(--opis); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pozycja-kitu.biezacy { background: color-mix(in srgb, var(--akcent) 14%, transparent); border-radius: 10px; }
+.pozycja-kitu .uchwyt { width: 44px; height: 44px; margin: -6px -6px -6px 0; display: flex; align-items: center; justify-content: center;
+  color: var(--opis); font-size: 22px; touch-action: none; cursor: grab; flex-shrink: 0; }
+.pozycja-kitu.przeciagany { opacity: .45; }
+.pozycja-kitu.cel-nad { box-shadow: inset 0 3px 0 var(--akcent); }
+.pozycja-kitu.cel-pod { box-shadow: inset 0 -3px 0 var(--akcent); }
+.podpowiedz-listy { color: var(--opis); font-size: var(--f-opis); padding: 6px 8px 2px; }
 .pozycja-kitu .sd { font-size: 12px; font-weight: 700; color: var(--akcent); border: 1px solid var(--akcent); border-radius: 6px; padding: 1px 5px; }
 .wybor-kitu { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--karta); padding: 0 12px;
   font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -841,6 +847,21 @@ dialog.pelny[open] { display: flex; }
         [this.kitOd(b), ka.kit], [this.adresSciezki(b, 1), ka.sciezki],
         [this.kitOd(a), kb.kit], [this.adresSciezki(a, 1), kb.sciezki]]);
     }
+    /** Przesuwa kit na inną pozycję (przeciąganie): kity pomiędzy schodzą
+     *  o jedno miejsce. Bloki kitów i wpisy WAV leżą jeden za drugim, więc
+     *  to obrót jednego ciągłego zakresu — jedna zmiana, jedno cofnięcie. */
+    przesunKit(z, cel) {
+      if (z === cel || z < 1 || z > 99 || cel < 1 || cel > 99) return false;
+      const dolny = Math.min(z, cel), gorny = Math.max(z, cel);
+      const kolejnosc = [];
+      for (let k = dolny; k <= gorny; k++) if (k !== z) kolejnosc.push(k);
+      kolejnosc.splice(cel - dolny, 0, z);
+      const kity = [], sciezki = [];
+      kolejnosc.forEach((k) => { const b = this.bajtyKitu(k); kity.push(...b.kit); sciezki.push(...b.sciezki); });
+      return this.zapiszFragmenty(`Kit ${z} moved to position ${cel}`,
+        [[this.kitOd(dolny), kity], [this.adresSciezki(dolny, 1), sciezki]]);
+    }
+
     /** Preset kitu — wspólny format z wersją na Maca (plik .tm2kits.json). */
     presetKitu(kit, nazwa) {
       const k = this.bajtyKitu(kit);
@@ -1296,6 +1317,7 @@ dialog.pelny[open] { display: flex; }
         el('div', { class: 'narzedzia' },
           przycisk('Copy to…', () => kopiujLubZamien('copy')),
           przycisk('Swap with…', () => kopiujLubZamien('swap')),
+          przycisk('Move to…', przesunDo),
           przycisk('Save as Preset…', zapiszPreset),
           przycisk('Kit Presets…', pokazPresety))),
       karta('Effect', null,
@@ -1431,6 +1453,19 @@ dialog.pelny[open] { display: flex; }
     zmienKit(k);
   }
 
+  /** To samo co przeciąganie, z wyborem pozycji z listy. */
+  async function przesunDo() {
+    const b = stan.backup, z = stan.kit;
+    const lista = el('select', { class: 'lista', 'aria-label': 'Position' });
+    for (let k = 1; k <= 99; k++) if (k !== z) lista.append(el('option', { value: k }, `Position ${String(k).padStart(2, '0')}  (now ${b.nazwaKitu(k) || ''})`));
+    const cel = await okno('Move Kit', `Move kit ${z} (${b.nazwaKitu(z)}) to another position. The kits in between move by one place, as when you drag it in the kit list.`, lista, 'Move');
+    if (cel === null) return;
+    b.przesunKit(z, Number(cel));
+    odswiezPasek();
+    komunikat(`Kit moved to position ${cel}`);
+    zmienKit(Number(cel));
+  }
+
   // ---- Presety kitów (pamięć aplikacji + plik .tm2kits.json) ------------------------
   const KLUCZ_PRESETOW = 'tm2.presety';
   function wczytajPresety() {
@@ -1551,14 +1586,80 @@ dialog.pelny[open] { display: flex; }
     const trafienia = b.szukaj($('#szukaj-kitu').value);
     const lista = $('#lista-kitow');
     if (!trafienia.length) { lista.replaceChildren(el('div', { class: 'pusto' }, 'No kit or WAV file matches.')); return; }
-    lista.replaceChildren(...trafienia.map((k) => {
-      const pliki = [1, 2, 3, 4].map((s) => b.sciezkaSampla(k, s)).filter(Boolean);
-      return el('button', { type: 'button', class: 'pozycja-kitu' + (k === stan.kit ? ' biezacy' : ''),
-        onclick: () => { $('#kity').close(); zmienKit(k); } },
-        el('span', { class: 'nr' }, String(k).padStart(2, '0')),
-        el('span', { class: 'nazwa' }, b.nazwaKitu(k) || '—', pliki.length ? el('span', { class: 'pliki' }, pliki.join(', ')) : null),
-        pliki.length ? el('span', { class: 'sd' }, 'SD') : null);
-    }));
+    // Przeciąganie tylko na pełnej liście — przy wyszukiwaniu pozycje na
+    // ekranie nie są pozycjami w module.
+    const przeciaganie = !$('#szukaj-kitu').value.trim();
+    lista.replaceChildren(
+      przeciaganie ? el('div', { class: 'podpowiedz-listy' }, 'Drag \u2261 to change the order of kits.') : null,
+      ...trafienia.map((k) => {
+        const pliki = [1, 2, 3, 4].map((s) => b.sciezkaSampla(k, s)).filter(Boolean);
+        const wiersz = el('button', { type: 'button', class: 'pozycja-kitu' + (k === stan.kit ? ' biezacy' : ''), 'data-kit': k,
+          onclick: () => { $('#kity').close(); zmienKit(k); } },
+          el('span', { class: 'nr' }, String(k).padStart(2, '0')),
+          el('span', { class: 'nazwa' }, b.nazwaKitu(k) || '—', pliki.length ? el('span', { class: 'pliki' }, pliki.join(', ')) : null),
+          pliki.length ? el('span', { class: 'sd' }, 'SD') : null);
+        if (przeciaganie) wiersz.append(uchwyt(k, wiersz));
+        return wiersz;
+      }));
+  }
+
+  /** Uchwyt ≡ do przeciągania kitu palcem. Własna obsługa wskaźnika, bo
+   *  przeciąganie HTML5 nie działa na ekranach dotykowych. */
+  function uchwyt(kit, wiersz) {
+    const u = el('span', { class: 'uchwyt', 'aria-label': `Drag kit ${kit}`, role: 'button' }, '\u2261');
+    const lista = () => $('#lista-kitow');
+    let cel = null, przewijanie = null, ostatnieY = 0;
+    const wyczysc = () => {
+      lista().querySelectorAll('.cel-nad, .cel-pod').forEach((x) => x.classList.remove('cel-nad', 'cel-pod'));
+    };
+    const wskaz = (x, y) => {
+      ostatnieY = y;
+      wyczysc();
+      const nad = document.elementFromPoint(x, y);
+      const r = nad && nad.closest('.pozycja-kitu');
+      cel = null;
+      if (!r || r === wiersz) return;
+      const k = Number(r.dataset.kit);
+      const prost = r.getBoundingClientRect();
+      const przed = y < prost.top + prost.height / 2;
+      r.classList.add(przed ? 'cel-nad' : 'cel-pod');
+      // Numer pozycji po upuszczeniu, licząc z tym, że kit znika ze swojego miejsca.
+      cel = kit < k ? (przed ? k - 1 : k) : (przed ? k : k + 1);
+      if (cel === kit) cel = null;
+    };
+    const przewijajPrzyKrawedzi = () => {
+      const l = lista(), p = l.getBoundingClientRect();
+      if (ostatnieY < p.top + 50) l.scrollTop -= 12;
+      else if (ostatnieY > p.bottom - 50) l.scrollTop += 12;
+    };
+    u.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      u.setPointerCapture(e.pointerId);
+      wiersz.classList.add('przeciagany');
+      ostatnieY = e.clientY;
+      przewijanie = setInterval(przewijajPrzyKrawedzi, 30);
+    });
+    u.addEventListener('pointermove', (e) => { if (u.hasPointerCapture(e.pointerId)) wskaz(e.clientX, e.clientY); });
+    const koniec = (zatwierdz) => (e) => {
+      clearInterval(przewijanie);
+      wiersz.classList.remove('przeciagany');
+      wyczysc();
+      if (u.hasPointerCapture(e.pointerId)) u.releasePointerCapture(e.pointerId);
+      if (zatwierdz && cel !== null) {
+        const dokad = cel;
+        stan.backup.przesunKit(kit, dokad);
+        stan.kit = dokad;
+        odswiezPasek(); odswiezListeKitow(); rysujTresc(); rysujKity();
+        const nowy = $(`#lista-kitow [data-kit="${dokad}"]`);
+        if (nowy) nowy.scrollIntoView({ block: 'nearest' });
+        komunikat(`Kit moved to position ${dokad}`);
+      }
+      cel = null;
+    };
+    u.addEventListener('pointerup', koniec(true));
+    u.addEventListener('pointercancel', koniec(false));
+    u.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+    return u;
   }
 
   function odswiezPasek() {

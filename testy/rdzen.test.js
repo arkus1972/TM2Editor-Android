@@ -142,6 +142,24 @@ test('kopiowanie i zamiana kitów razem ze ścieżkami WAV, jedno cofnięcie', (
   assert.deepStrictEqual(Buffer.from(b.b.subarray(0, 0x7C)), org.subarray(0, 0x7C));
 });
 
+test('przeciąganie: kit na inną pozycję, pozostałe schodzą o jedno miejsce', () => {
+  const b = new T.Backup(dane('wav-1.bin'));
+  const org = Buffer.from(b.b);
+  const nazwy = Array.from({ length: 99 }, (_, i) => b.nazwaKitu(i + 1));
+  b.przesunKit(70, 2);
+  assert.strictEqual(b.nazwaKitu(2), nazwy[69]);
+  assert.strictEqual(b.sciezkaSampla(2, 1), 'TEST_A.wav');
+  assert.strictEqual(b.nazwaKitu(3), nazwy[1]);
+  assert.strictEqual(b.nazwaKitu(70), nazwy[68]);
+  assert.strictEqual(b.nazwaKitu(1), nazwy[0]);
+  assert.strictEqual(b.zmiany.length, 1);
+  b.przesunKit(1, 99);
+  assert.strictEqual(b.nazwaKitu(99), nazwy[0]);
+  b.cofnij(); b.cofnij();
+  assert.deepStrictEqual(Buffer.from(b.b), org);
+  assert.strictEqual(b.przesunKit(4, 4), false);
+});
+
 test('presety: zapis, plik biblioteki, zastosowanie na innym kicie', () => {
   const b = new T.Backup(dane('wav-1.bin'));
   const p = b.presetKitu(70, 'Testowy');
