@@ -33,6 +33,7 @@ wtedy do Pobranych) — wygodne do sprawdzania zmian bez telefonu.
 - presety kitów: biblioteka w aplikacji, import/eksport pliku `.tm2kits.json` — ten sam format co na Macu,
 - wyszukiwanie kitów po numerze, nazwie i nazwie pliku WAV,
 - nowy backup: 99 pustych kitów („New Kit", jak na module), ustawienia SYSTEM i wejść z otwartego backupu,
+- backup fabryczny: stan jak po FACTORY RESET (50 fabrycznych kitów, fabryczne SYSTEM i wejścia), bajt w bajt jak backup z modułu,
 - lista zmian, cofnij / ponów, cofnij wszystko,
 - zapis zawsze jako **nowy plik** z poprawną sumą MD5 — oryginału nigdy nie nadpisuje.
 

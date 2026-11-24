@@ -184,4 +184,15 @@ test('nowy backup: 99 × New Kit jak na module, poprawna suma, ustawienia z otwa
   assert.strictEqual(n.maNiezapisane, false);
 });
 
+test('backup fabryczny: bajt w bajt jak FactoryBackup.bin z modułu', () => {
+  const f = T.Backup.fabryczny();
+  assert.deepStrictEqual(Buffer.from(f.b), Buffer.from(dane('fabryczny.bin')));
+  assert.strictEqual(f.nazwaKitu(1), 'Claps!');
+  assert.strictEqual(f.nazwaKitu(50), 'Acoustic');
+  assert.strictEqual(f.nazwaKitu(51), 'New Kit');
+  assert.strictEqual(f.maNiezapisane, true);
+  // Pusty nowy backup bez otwartego pliku ma fabryczny nagłówek.
+  assert.deepStrictEqual(Buffer.from(T.Backup.nowy().b.subarray(0, 0x7C)), Buffer.from(dane('fabryczny.bin').subarray(0, 0x7C)));
+});
+
 console.log(`\n${liczba} testów — wszystkie przeszły.`);
