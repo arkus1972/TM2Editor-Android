@@ -1592,7 +1592,7 @@ dialog.pelny[open] { display: flex; }
     // ekranie nie są pozycjami w module.
     const przeciaganie = !$('#szukaj-kitu').value.trim();
     lista.replaceChildren(
-      przeciaganie ? el('div', { class: 'podpowiedz-listy' }, 'Drag \u2261 to change the order of kits.') : null,
+      przeciaganie ? el('div', { class: 'podpowiedz-listy' }, 'Drag \u2261 of the selected kit to move it. To move another kit, select it first.') : null,
       ...trafienia.map((k) => {
         const pliki = [1, 2, 3, 4].map((s) => b.sciezkaSampla(k, s)).filter(Boolean);
         const wiersz = el('button', { type: 'button', class: 'pozycja-kitu' + (k === stan.kit ? ' biezacy' : ''), 'data-kit': k,
@@ -1600,7 +1600,9 @@ dialog.pelny[open] { display: flex; }
           el('span', { class: 'nr' }, String(k).padStart(2, '0')),
           el('span', { class: 'nazwa' }, b.nazwaKitu(k) || '—', pliki.length ? el('span', { class: 'pliki' }, pliki.join(', ')) : null),
           pliki.length ? el('span', { class: 'sd' }, 'SD') : null);
-        if (przeciaganie) wiersz.append(uchwyt(k, wiersz));
+        // Uchwyt tylko przy zaznaczonym kicie (prośba Arka: przeciąga się
+        // wyłącznie to, co widać jako wybrane).
+        if (przeciaganie && k === stan.kit) wiersz.append(uchwyt(k, wiersz));
         return wiersz;
       }));
   }
@@ -1635,14 +1637,6 @@ dialog.pelny[open] { display: flex; }
     u.addEventListener('pointerdown', (e) => {
       e.preventDefault(); e.stopPropagation();
       u.setPointerCapture(e.pointerId);
-      // Chwycony kit od razu staje się bieżącym (zaznaczonym) — przeciąga
-      // się to, co widać jako wybrane.
-      if (stan.kit !== kit) {
-        lista().querySelectorAll('.biezacy').forEach((x) => x.classList.remove('biezacy'));
-        wiersz.classList.add('biezacy');
-        stan.kit = kit;
-        odswiezListeKitow(); rysujTresc();
-      }
       wiersz.classList.add('przeciagany');
       ostatnieY = e.clientY;
       przewijanie = setInterval(przewijajPrzyKrawedzi, 30);
