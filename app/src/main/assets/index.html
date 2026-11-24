@@ -132,6 +132,33 @@ dialog h3 { margin: 0; padding: 16px 18px 8px; font-size: var(--f-tytul); }
 dialog ol { margin: 0; padding: 0 18px 8px 40px; max-height: 55vh; overflow: auto; font-size: 15px; line-height: 1.5; }
 dialog .stopka { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; }
 dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-height: 1.5; }
+dialog.pelny { width: min(640px, calc(100vw - 16px)); height: min(86vh, 900px); max-height: none; display: none; flex-direction: column; }
+dialog.pelny[open] { display: flex; }
+.naglowek-okna { display: flex; gap: 8px; align-items: center; padding: 14px 14px 10px; border-bottom: 1px solid var(--linia); }
+.naglowek-okna h3 { flex: 1; padding: 0; }
+.naglowek-okna .przycisk { flex-shrink: 0; }
+.podpis-okna { margin: 10px 0 4px; }
+.lista-kitow, .lista-presetow { flex: 1; overflow: auto; padding: 6px 10px 10px; }
+.pozycja-kitu { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; border: 0; border-bottom: 1px solid var(--linia);
+  background: transparent; text-align: left; padding: 8px 8px; font-weight: 600; }
+.pozycja-kitu .nr { color: var(--opis); font-variant-numeric: tabular-nums; width: 26px; }
+.pozycja-kitu .nazwa { flex: 1; min-width: 0; }
+.pozycja-kitu .pliki { display: block; font-weight: 400; font-size: var(--f-opis); color: var(--opis); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pozycja-kitu.biezacy { background: color-mix(in srgb, var(--akcent) 14%, transparent); border-radius: 10px; }
+.pozycja-kitu .sd { font-size: 12px; font-weight: 700; color: var(--akcent); border: 1px solid var(--akcent); border-radius: 6px; padding: 1px 5px; }
+.wybor-kitu { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--karta); padding: 0 12px;
+  font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wybor-kitu::after { content: " ▾"; color: var(--opis); }
+.preset { border-bottom: 1px solid var(--linia); padding: 10px 6px; }
+.preset .nazwa { font-weight: 700; font-size: var(--f-etykieta); }
+.preset .info { color: var(--opis); font-size: var(--f-opis); margin: 2px 0 8px; line-height: 1.4; }
+.preset .rzad { margin-top: 0; }
+.preset .rzad .przycisk { flex: 0 0 auto; height: 38px; padding: 0 12px; font-size: 15px; }
+.narzedzia { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 16px; }
+.tresc-okna { padding: 0 18px; }
+.tresc-okna select.lista, .tresc-okna input.tekst { width: 100%; max-width: none; }
+.przyciski-start { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.pusto { color: var(--opis); text-align: center; padding: 30px 10px; font-size: var(--f-opis); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -155,7 +182,7 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
       <button class="ikona" id="kit-poprzedni" type="button" aria-label="Previous kit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <select id="kit" aria-label="Kit"></select>
+      <button id="kit" class="wybor-kitu" type="button" aria-haspopup="dialog"></button>
       <button class="ikona" id="kit-nastepny" type="button" aria-label="Next kit">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
       </button>
@@ -173,7 +200,10 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
   <div id="start" class="start">
     <h2>Roland TM-2 backup editor</h2>
     <p>Edit kits, effects, sounds, trigger settings and system settings of a TM-2 backup file. Your original file is never changed — saving always creates a new backup.</p>
-    <button class="przycisk akcent" id="otworz-start" type="button">Open Backup</button>
+    <div class="przyciski-start">
+      <button class="przycisk akcent" id="otworz-start" type="button">Open Backup</button>
+      <button class="przycisk" id="nowy-start" type="button">New Backup</button>
+    </div>
     <ol>
       <li>On the module: <b>BACKUP SAVE</b> to the SD card.</li>
       <li>Open <b>ROLAND/TM-2/Backup/BKUP-xxx.TM0</b> from the card (card reader or a copy on the phone).</li>
@@ -198,6 +228,29 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     <button class="przycisk akcent" id="zamknij-zmiany" type="button">Close</button>
   </div>
 </dialog>
+<dialog id="kity" class="pelny">
+  <div class="naglowek-okna">
+    <input id="szukaj-kitu" class="tekst" type="search" placeholder="Search kits and WAV files" autocomplete="off" spellcheck="false" aria-label="Search kits">
+    <button class="przycisk" id="zamknij-kity" type="button">Close</button>
+  </div>
+  <div id="lista-kitow" class="lista-kitow"></div>
+</dialog>
+<dialog id="okno">
+  <h3></h3>
+  <p></p>
+  <div class="tresc-okna"></div>
+  <div class="stopka"></div>
+</dialog>
+<dialog id="presety" class="pelny">
+  <div class="naglowek-okna"><h3>Kit Presets</h3><button class="przycisk" id="zamknij-presety" type="button">Close</button></div>
+  <p class="podpis-okna">A preset is one kit with its effect, four sounds and WAV file names. System and trigger settings are never included. Same file format as the Mac editor.</p>
+  <div id="lista-presetow" class="lista-presetow"></div>
+  <div class="stopka">
+    <button class="przycisk" id="import-presetow" type="button">Import…</button>
+    <button class="przycisk" id="eksport-presetow" type="button">Export…</button>
+  </div>
+</dialog>
+<input id="plik-presetow" type="file" accept=".json,application/json" class="ukryte" aria-hidden="true">
 <dialog id="pytanie">
   <h3></h3>
   <p></p>
@@ -555,7 +608,7 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
       this.zapisanaDlugosc = 0;
     }
 
-    get maNiezapisane() { return this.zmiany.length !== this.zapisanaDlugosc; }
+    get maNiezapisane() { return this.nowy || this.zmiany.length !== this.zapisanaDlugosc; }
 
     // -- adresy
     kitOd(kit) { return KIT_OD + (kit - 1) * KIT_KROK; }
@@ -762,7 +815,126 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
       wynik.set(md5(wynik.subarray(0, MD5_OD)), MD5_OD);
       return wynik;
     }
-    oznaczZapisane() { this.zapisanaDlugosc = this.zmiany.length; }
+    oznaczZapisane() { this.zapisanaDlugosc = this.zmiany.length; this.nowy = false; }
+
+    // -- kity jako całość: kopiowanie, zamiana, presety
+    // Kit to blok 234 B (nazwa, efekt, 4 sloty) plus jego 4 wpisy w tablicy
+    // ścieżek WAV (1024 B, leżą jeden za drugim). Ustawienia SYSTEM i wejść
+    // są globalne — żadna z tych operacji ich nie rusza.
+    bajtyKitu(kit) {
+      return {
+        kit: Array.from(this.b.subarray(this.kitOd(kit), this.kitOd(kit) + KIT_KROK)),
+        sciezki: Array.from(this.b.subarray(this.adresSciezki(kit, 1), this.adresSciezki(kit, 1) + 4 * WAV_DLUGOSC)),
+      };
+    }
+    kopiujKit(z, dokad) {
+      if (z === dokad) return false;
+      const k = this.bajtyKitu(z);
+      return this.zapiszFragmenty(`Kit ${z} copied to kit ${dokad}`,
+        [[this.kitOd(dokad), k.kit], [this.adresSciezki(dokad, 1), k.sciezki]]);
+    }
+    zamienKity(a, b) {
+      if (a === b) return false;
+      const ka = this.bajtyKitu(a), kb = this.bajtyKitu(b);
+      return this.zapiszFragmenty(`Kits ${a} and ${b} swapped`, [
+        [this.kitOd(b), ka.kit], [this.adresSciezki(b, 1), ka.sciezki],
+        [this.kitOd(a), kb.kit], [this.adresSciezki(a, 1), kb.sciezki]]);
+    }
+    /** Preset kitu — wspólny format z wersją na Maca (plik .tm2kits.json). */
+    presetKitu(kit, nazwa) {
+      const k = this.bajtyKitu(kit);
+      return {
+        id: nowyId(), name: String(nazwa || this.nazwaKitu(kit) || `Kit ${kit}`).slice(0, 60),
+        saved: new Date().toISOString(), sourceKit: kit,
+        effect: (this.efekt(kit) || { nazwa: '#' + this.kodEfektu(kit) }).nazwa,
+        sounds: [1, 2, 3, 4].map((s) => this.opisBrzmienia(kit, s)),
+        kit: base64(k.kit),
+        paths: [1, 2, 3, 4].map((s) => this.sciezkaZWpisu(kit, s)),
+      };
+    }
+    /** Ścieżka zapisana we wpisie, także gdy pad gra brzmienie wewnętrzne. */
+    sciezkaZWpisu(kit, slot) {
+      const o = this.adresSciezki(kit, slot);
+      let t = '';
+      for (let i = 0; i < WAV_DLUGOSC && this.b[o + i] !== 0; i++) t += String.fromCharCode(this.b[o + i]);
+      return t;
+    }
+    zastosujPreset(preset, kit) {
+      const blok = Array.from(zBase64(preset.kit));
+      if (blok.length !== KIT_KROK) throw new Error('This preset is damaged.');
+      const sciezki = new Array(4 * WAV_DLUGOSC).fill(0);
+      (preset.paths || []).slice(0, 4).forEach((t, s) => {
+        const z = String(t || '');
+        if (z.length >= WAV_DLUGOSC || ![...z].every((c) => c.charCodeAt(0) >= 0x20 && c.charCodeAt(0) < 0x7F)) throw new Error('This preset is damaged.');
+        for (let i = 0; i < z.length; i++) sciezki[s * WAV_DLUGOSC + i] = z.charCodeAt(i);
+      });
+      return this.zapiszFragmenty(`Preset "${preset.name}" → kit ${kit}`,
+        [[this.kitOd(kit), blok], [this.adresSciezki(kit, 1), sciezki]]);
+    }
+    /** Kity, których nazwa albo plik WAV zawiera szukany tekst. */
+    szukaj(tekst) {
+      const t = String(tekst || '').trim().toLowerCase();
+      const wynik = [];
+      for (let k = 1; k <= 99; k++) {
+        const nazwy = [String(k), (this.nazwaKitu(k) || '')];
+        for (let s = 1; s <= 4; s++) { const p = this.sciezkaSampla(k, s); if (p) nazwy.push(p); }
+        if (!t || nazwy.some((n) => n.toLowerCase().includes(t))) wynik.push(k);
+      }
+      return wynik;
+    }
+
+    /** Nowy backup: 99 × „New Kit" (dokładnie tak, jak moduł trzyma pusty
+     *  kit — zmierzone na kitach 52–99 backupu Arka), bez sampli. Ustawienia
+     *  SYSTEM i wejść z podanego backupu albo z wbudowanego wzoru. */
+    static nowy(zrodlo) {
+      const b = new Uint8Array(ROZMIAR);
+      const naglowek = zrodlo ? zrodlo.subarray(0, KIT_OD) : zBase64(WZOR_NAGLOWKA);
+      b.set(naglowek, 0);
+      b[WSKAZNIK_KITU] = 0;
+      const kit = zBase64(WZOR_KITU);
+      for (let k = 0; k < 99; k++) b.set(kit, KIT_OD + k * KIT_KROK);
+      b.set(md5(b.subarray(0, MD5_OD)), MD5_OD);
+      const backup = new Backup(b, 'BKUP-001.TM0');
+      backup.nowy = true;
+      return backup;
+    }
+  }
+
+  // Wzory dla nowego backupu, wyjęte z backupu Arka (baza-2026-11-21):
+  // nagłówek 0x00–0x7B (nazwa „Backup", wskaźnik kitu 0) i kit „New Kit".
+  const WZOR_NAGLOWKA = 'VE0tMgAAAABCS0JhY2t1cCAgAAAAAAMBcAAAAAIAAAAAAAAAAAAAAAIAAAAEBwAYAAEACQEBAAAAAAAAAAAAAAAgCA8AJAkMKAAAAgAAAAAaDAcAIAYMKAAKAAAAAAEaDAcAIAYMKAAKAAAAAAAaDAcAIAYMKAAKAAAAAA==';
+  const WZOR_KITU = 'TgBlAHcAIABLAGkAdAAgACAAIAAgAAEAEwACAB4AAAABAAcACgAKAGQAZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAFoAAAAPAAAAJAAAAAAAAQAAAP//AAAAAAAAAAAAAAAAAAAAAAAAPgABAFoAAAAPAAAAIwAAAAAAAQAAAP//AAAAAAAAAAAAAAAAAAAAAAAAXgABAFoAAAAPAAAAJgAAAAAAAQAAAP//AAAAAAAAAAAAAAAAAAAAAAAAQwABAFoAAAAPAAAAKAAAAAAAAQAAAP//AAAAAAAAAAAAAAAAAAAAAAAA';
+
+  function base64(bajty) {
+    let s = '';
+    for (let i = 0; i < bajty.length; i += 0x8000) s += String.fromCharCode.apply(null, Array.from(bajty.slice(i, i + 0x8000)));
+    return btoa(s);
+  }
+  function zBase64(t) {
+    const s = atob(t);
+    const b = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+    return b;
+  }
+  function nowyId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  /** Plik biblioteki presetów — ten sam na Macu i na Androidzie. */
+  const FORMAT_PRESETOW = 'TM2Editor-KitPresets';
+  function plikPresetow(presety) {
+    return JSON.stringify({ format: FORMAT_PRESETOW, version: 1, exported: new Date().toISOString(), presets: presety }, null, 2);
+  }
+  /** Odczyt biblioteki: zwraca tylko poprawne presety (blok 234 B, 4 ścieżki ASCII). */
+  function czytajPresety(tekst) {
+    let o;
+    try { o = JSON.parse(tekst); } catch (e) { throw new Error('This is not a TM-2 kit preset file.'); }
+    const lista = Array.isArray(o) ? o : (o && o.format === FORMAT_PRESETOW ? o.presets : null);
+    if (!Array.isArray(lista)) throw new Error('This is not a TM-2 kit preset file.');
+    return lista.filter((p) => {
+      try {
+        return p && typeof p.name === 'string' && typeof p.kit === 'string' && zBase64(p.kit).length === KIT_KROK
+          && Array.isArray(p.paths) && p.paths.length === 4 && p.paths.every((t) => typeof t === 'string' && t.length < WAV_DLUGOSC);
+      } catch (e) { return false; }
+    }).map((p) => ({ ...p, id: typeof p.id === 'string' ? p.id : nowyId() }));
   }
 
   function nazwaRekordu(rekord) {
@@ -806,6 +978,7 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     ROZMIAR, WAV_OD, WAV_DLUGOSC, LISTY, INSTRUMENTY, EFEKTY, PARAMETRY_EFEKTOW, TYPY_PADOW, KOLEJNOSC_TYPOW,
     POLA_KITU, POLA_SLOTU, POLA_SYSTEMU, polaWejscia, polaGniazda, nazwaRekordu,
     Backup, md5, tekst, tekstPola, opisZakresu, opisListy, efekt, typPada,
+    plikPresetow, czytajPresety, nowyId,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -885,12 +1058,31 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     const bin = atob(base64);
     const b = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    // Biblioteka presetów to JSON (zaczyna się od „{" albo „["), backup — binarny.
+    if (b.length && (b[0] === 0x7B || b[0] === 0x5B)) { importujPresety(new TextDecoder().decode(b)); return; }
     wczytaj(b, nazwa || 'BKUP.TM0');
   };
+  // Co właśnie zapisujemy: „backup" albo „presety" — ustawiane przy KAŻDYM
+  // zapisie, więc anulowane okno zapisu nie zostawia złego stanu.
+  let coZapisuje = 'backup';
   window.tm2PlikZapisany = (ok, nazwa) => {
+    if (coZapisuje === 'presety') { if (ok) komunikat('Presets exported to ' + nazwa); else if (nazwa) komunikat('Not saved: ' + nazwa, true); return; }
     if (ok) zapisano(nazwa);
     else if (nazwa) komunikat('Not saved: ' + nazwa, true);
   };
+  function zapiszPlik(nazwa, dane, co) {
+    coZapisuje = co;
+    if (android) {
+      let bin = '';
+      for (let i = 0; i < dane.length; i += 0x8000) bin += String.fromCharCode.apply(null, dane.subarray(i, i + 0x8000));
+      android.zapiszPlik(nazwa, btoa(bin));
+      return false;
+    }
+    const a = el('a', { href: URL.createObjectURL(new Blob([dane], { type: 'application/octet-stream' })), download: nazwa });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    return true;
+  }
   window.tm2MaNiezapisane = () => !!(stan.backup && stan.backup.maNiezapisane);
   window.tm2Blad = (tekst) => komunikat(tekst, true);
 
@@ -907,17 +1099,9 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     const aktywny = document.activeElement;
     if (aktywny && aktywny.blur) aktywny.blur();   // zatwierdza wpisywany tekst
     const dane = b.doZapisu();
-    const nazwa = nastepnaNazwa(b.nazwaPliku);
-    if (android) {
-      let bin = '';
-      for (let i = 0; i < dane.length; i += 0x8000) bin += String.fromCharCode.apply(null, dane.subarray(i, i + 0x8000));
-      android.zapiszPlik(nazwa, btoa(bin));
-    } else {
-      const a = el('a', { href: URL.createObjectURL(new Blob([dane], { type: 'application/octet-stream' })), download: nazwa });
-      document.body.append(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      zapisano(nazwa);
-    }
+    // Nowy backup to pierwszy taki plik — BKUP-001; inaczej numer o jeden wyżej.
+    const nazwa = b.nowy ? 'BKUP-001.TM0' : nastepnaNazwa(b.nazwaPliku);
+    if (zapiszPlik(nazwa, dane, 'backup')) zapisano(nazwa);
   }
   function zapisano(nazwa) {
     stan.backup.oznaczZapisane();
@@ -1087,8 +1271,14 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     wybor.value = b.kodEfektu(kit);
     wybor.addEventListener('change', () => { b.ustawEfekt(kit, Number(wybor.value)); odswiezPasek(); rysujTresc(); });
     const parametry = b.parametryEfektu(kit).map((p) => wierszPola(p, kit));
+    const przycisk = (napis, f) => el('button', { class: 'przycisk', type: 'button', onclick: f }, napis);
     return [
-      karta('Kit ' + String(kit).padStart(2, '0'), null, wierszPola(T.POLA_KITU[0], kit)),
+      karta('Kit ' + String(kit).padStart(2, '0'), null, wierszPola(T.POLA_KITU[0], kit),
+        el('div', { class: 'narzedzia' },
+          przycisk('Copy to…', () => kopiujLubZamien('copy')),
+          przycisk('Swap with…', () => kopiujLubZamien('swap')),
+          przycisk('Save as Preset…', zapiszPreset),
+          przycisk('Kit Presets…', pokazPresety))),
       karta('Effect', null,
         wiersz('Kit Effect', 'Changing it resets the effect’s parameters to their defaults, as on the module.', wybor),
         ...parametry),
@@ -1169,6 +1359,8 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     return [
       karta('System', 'Module settings (SHIFT + INST › SYSTEM) and the name shown in BACKUP LOAD.',
         ...T.POLA_SYSTEMU.map((p) => wierszPola(p))),
+      karta('New Backup', 'Start a new backup with 99 empty kits (\u201cNew Kit\u201d, as on the module) and no samples. System and trigger settings are taken from this backup.',
+        el('div', { class: 'narzedzia' }, el('button', { class: 'przycisk', type: 'button', onclick: () => nowyBackup(true) }, 'Create New Backup'))),
       karta('SD Card Samples', sample.length
         ? `${sample.length} WAV file${sample.length > 1 ? 's' : ''} this backup plays. They must be in ROLAND/TM-2/WAVE on the card:`
         : 'This backup plays only internal sounds.',
@@ -1176,12 +1368,172 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
     ];
   }
 
+  // ---- Okno z polem: wybór kitu albo nazwa ------------------------------------------
+  function okno(tytul, tresc, pole, tak) {
+    return new Promise((ok) => {
+      const d = $('#okno');
+      d.querySelector('h3').textContent = tytul;
+      d.querySelector('p').textContent = tresc;
+      d.querySelector('.tresc-okna').replaceChildren(pole);
+      const bNie = el('button', { class: 'przycisk', type: 'button' }, 'Cancel');
+      const bTak = el('button', { class: 'przycisk akcent', type: 'button' }, tak);
+      d.querySelector('.stopka').replaceChildren(bNie, bTak);
+      bNie.onclick = () => { d.close(); ok(null); };
+      bTak.onclick = () => { d.close(); ok(pole.value); };
+      if (pole.tagName === 'INPUT') pole.onkeydown = (e) => { if (e.key === 'Enter') bTak.click(); };
+      d.showModal();
+      if (pole.tagName === 'INPUT') { pole.focus(); pole.select(); }
+    });
+  }
+  function wyborKitu(pominBiezacy) {
+    const s = el('select', { class: 'lista', 'aria-label': 'Kit' });
+    for (let k = 1; k <= 99; k++) {
+      if (pominBiezacy && k === stan.kit) continue;
+      s.append(el('option', { value: k }, String(k).padStart(2, '0') + '  ' + (stan.backup.nazwaKitu(k) || '')));
+    }
+    if (!pominBiezacy) s.value = stan.kit;
+    return s;
+  }
+
+  async function kopiujLubZamien(tryb) {
+    const b = stan.backup, z = stan.kit;
+    const nazwa = `kit ${z} (${b.nazwaKitu(z)})`;
+    const cel = await okno(tryb === 'copy' ? 'Copy Kit' : 'Swap Kits',
+      tryb === 'copy' ? `Copy ${nazwa} with its effect, sounds and WAV file names onto another kit. That kit will be replaced.`
+        : `Exchange ${nazwa} with another kit, including WAV file names.`,
+      wyborKitu(true), tryb === 'copy' ? 'Copy' : 'Swap');
+    if (cel === null) return;
+    const k = Number(cel);
+    if (tryb === 'copy') b.kopiujKit(z, k); else b.zamienKity(z, k);
+    odswiezPasek();
+    komunikat(tryb === 'copy' ? `Kit ${z} copied to kit ${k}` : `Kits ${z} and ${k} swapped`);
+    zmienKit(k);
+  }
+
+  // ---- Presety kitów (pamięć aplikacji + plik .tm2kits.json) ------------------------
+  const KLUCZ_PRESETOW = 'tm2.presety';
+  function wczytajPresety() {
+    try { return T.czytajPresety(localStorage.getItem(KLUCZ_PRESETOW) || '[]'); } catch (e) { return []; }
+  }
+  function zachowajPresety(lista) {
+    try { localStorage.setItem(KLUCZ_PRESETOW, JSON.stringify(lista)); return true; }
+    catch (e) { komunikat('Presets could not be stored on this device. Export them to keep them.', true); return false; }
+  }
+  async function zapiszPreset() {
+    const b = stan.backup;
+    const pole = el('input', { class: 'tekst', type: 'text', maxlength: 60, value: b.nazwaKitu(stan.kit) || '', autocomplete: 'off', 'aria-label': 'Preset name' });
+    const nazwa = await okno('Save as Preset', 'The preset keeps this kit\u2019s name, effect, four sounds and WAV file names.', pole, 'Save');
+    if (nazwa === null) return;
+    if (!nazwa.trim()) { komunikat('Enter a name for the preset.', true); return; }
+    const lista = wczytajPresety();
+    lista.unshift(b.presetKitu(stan.kit, nazwa.trim()));
+    if (zachowajPresety(lista)) komunikat(`Preset \u201c${nazwa.trim()}\u201d saved`);
+  }
+  function pokazPresety() { rysujPresety(); $('#presety').showModal(); }
+  function rysujPresety() {
+    const lista = wczytajPresety();
+    const host = $('#lista-presetow');
+    if (!lista.length) {
+      host.replaceChildren(el('div', { class: 'pusto' }, 'No presets yet. Choose a kit and tap \u201cSave as Preset\u2026\u201d, or import a preset file from the Mac editor.'));
+      return;
+    }
+    host.replaceChildren(...lista.map((p) => {
+      const pliki = p.paths.filter(Boolean);
+      return el('div', { class: 'preset' },
+        el('div', { class: 'nazwa' }, p.name),
+        el('div', { class: 'info' }, [p.effect, ...(p.sounds || [])].filter(Boolean).join(' · ')
+          + (pliki.length ? ` \u2014 needs on the card: ${pliki.join(', ')}` : '')),
+        el('div', { class: 'rzad' },
+          el('button', { class: 'przycisk akcent', type: 'button', onclick: () => zastosujPreset(p) }, `Apply to Kit ${String(stan.kit).padStart(2, '0')}`),
+          el('button', { class: 'przycisk', type: 'button', onclick: () => zmienNazwePresetu(p) }, 'Rename'),
+          el('button', { class: 'przycisk', type: 'button', onclick: () => usunPreset(p) }, 'Delete')));
+    }));
+  }
+  async function zastosujPreset(p) {
+    const b = stan.backup;
+    $('#presety').close();
+    const tak = await pytaj('Apply Preset?', `Kit ${stan.kit} (${b.nazwaKitu(stan.kit)}) will be replaced by \u201c${p.name}\u201d. You can undo it.`, 'Apply', 'Cancel');
+    if (!tak) return;
+    try { b.zastosujPreset(p, stan.kit); odswiezPasek(); odswiezListeKitow(); rysujTresc(); komunikat(`Preset \u201c${p.name}\u201d applied to kit ${stan.kit}`); }
+    catch (e) { komunikat(e.message, true); }
+  }
+  async function zmienNazwePresetu(p) {
+    $('#presety').close();
+    const pole = el('input', { class: 'tekst', type: 'text', maxlength: 60, value: p.name, autocomplete: 'off', 'aria-label': 'Preset name' });
+    const nazwa = await okno('Rename Preset', '', pole, 'Rename');
+    if (nazwa !== null && nazwa.trim()) {
+      const lista = wczytajPresety();
+      const x = lista.find((q) => q.id === p.id);
+      if (x) { x.name = nazwa.trim(); zachowajPresety(lista); }
+    }
+    pokazPresety();
+  }
+  async function usunPreset(p) {
+    $('#presety').close();
+    if (await pytaj('Delete Preset?', `\u201c${p.name}\u201d will be removed from this device.`, 'Delete', 'Cancel')) {
+      zachowajPresety(wczytajPresety().filter((q) => q.id !== p.id));
+    }
+    pokazPresety();
+  }
+  function eksportujPresety() {
+    const lista = wczytajPresety();
+    if (!lista.length) { komunikat('There are no presets to export.', true); return; }
+    const dane = new TextEncoder().encode(T.plikPresetow(lista));
+    if (zapiszPlik('TM2-Kit-Presets.tm2kits.json', dane, 'presety')) komunikat(`${lista.length} presets exported`);
+  }
+  function importujPresety(tekst) {
+    try {
+      const nowe = T.czytajPresety(tekst);
+      if (!nowe.length) { komunikat('No TM-2 kit presets in this file.', true); return; }
+      const lista = wczytajPresety();
+      const ids = new Set(lista.map((p) => p.id));
+      nowe.forEach((p) => { if (ids.has(p.id)) p.id = T.nowyId(); lista.push(p); });
+      if (zachowajPresety(lista)) komunikat(`${nowe.length} preset${nowe.length > 1 ? 's' : ''} imported`);
+      if (stan.backup) pokazPresety();
+    } catch (e) { komunikat(e.message, true); }
+  }
+
+  // ---- Nowy backup --------------------------------------------------------------------
+  async function nowyBackup(zOtwartego) {
+    if (stan.backup && stan.backup.maNiezapisane) {
+      const tak = await pytaj('Discard changes?', 'This backup has changes that are not saved yet.', 'Discard', 'Cancel');
+      if (!tak) return;
+    }
+    stan.backup = T.Backup.nowy(zOtwartego && stan.backup ? stan.backup.b : null);
+    stan.kit = 1;
+    $('#uwagi').classList.add('ukryte');
+    rysuj();
+    komunikat('New backup with 99 empty kits. Save it to keep it.');
+  }
+
   // ---- Rysowanie -----------------------------------------------------------------
   function odswiezListeKitow() {
-    const b = stan.backup, s = $('#kit');
-    s.replaceChildren(...Array.from({ length: 99 }, (_, i) =>
-      el('option', { value: i + 1 }, String(i + 1).padStart(2, '0') + '  ' + (b.nazwaKitu(i + 1) || ''))));
-    s.value = stan.kit;
+    const b = stan.backup;
+    $('#kit').textContent = String(stan.kit).padStart(2, '0') + '  ' + (b.nazwaKitu(stan.kit) || '');
+  }
+
+  /** Okno z listą 99 kitów i wyszukiwaniem po nazwie kitu i nazwie pliku WAV. */
+  function pokazKity() {
+    const pole = $('#szukaj-kitu');
+    pole.value = '';
+    rysujKity();
+    $('#kity').showModal();
+    const biezacy = $('#lista-kitow .biezacy');
+    if (biezacy) biezacy.scrollIntoView({ block: 'center' });
+  }
+  function rysujKity() {
+    const b = stan.backup;
+    const trafienia = b.szukaj($('#szukaj-kitu').value);
+    const lista = $('#lista-kitow');
+    if (!trafienia.length) { lista.replaceChildren(el('div', { class: 'pusto' }, 'No kit or WAV file matches.')); return; }
+    lista.replaceChildren(...trafienia.map((k) => {
+      const pliki = [1, 2, 3, 4].map((s) => b.sciezkaSampla(k, s)).filter(Boolean);
+      return el('button', { type: 'button', class: 'pozycja-kitu' + (k === stan.kit ? ' biezacy' : ''),
+        onclick: () => { $('#kity').close(); zmienKit(k); } },
+        el('span', { class: 'nr' }, String(k).padStart(2, '0')),
+        el('span', { class: 'nazwa' }, b.nazwaKitu(k) || '—', pliki.length ? el('span', { class: 'pliki' }, pliki.join(', ')) : null),
+        pliki.length ? el('span', { class: 'sd' }, 'SD') : null);
+    }));
   }
 
   function odswiezPasek() {
@@ -1217,7 +1569,7 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
 
   function zmienKit(n) {
     stan.kit = Math.min(99, Math.max(1, n));
-    $('#kit').value = stan.kit;
+    odswiezListeKitow();
     rysujTresc();
   }
 
@@ -1240,7 +1592,18 @@ dialog p { padding: 0 18px; color: var(--opis); font-size: var(--f-opis); line-h
         while (stan.backup.cofnij()); rysuj(); komunikat('All changes reverted');
       }
     });
-    $('#kit').addEventListener('change', (e) => zmienKit(Number(e.target.value)));
+    $('#kit').addEventListener('click', pokazKity);
+    $('#szukaj-kitu').addEventListener('input', rysujKity);
+    $('#zamknij-kity').addEventListener('click', () => $('#kity').close());
+    $('#zamknij-presety').addEventListener('click', () => $('#presety').close());
+    $('#eksport-presetow').addEventListener('click', eksportujPresety);
+    $('#import-presetow').addEventListener('click', () => { if (android) android.otworzPlik(); else $('#plik-presetow').click(); });
+    $('#plik-presetow').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (f) f.text().then(importujPresety);
+      e.target.value = '';
+    });
+    $('#nowy-start').addEventListener('click', () => nowyBackup(false));
     $('#kit-poprzedni').addEventListener('click', () => zmienKit(stan.kit - 1));
     $('#kit-nastepny').addEventListener('click', () => zmienKit(stan.kit + 1));
     document.querySelectorAll('nav.zakladki button').forEach((b) => b.addEventListener('click', () => {

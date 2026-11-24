@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const html = fs.readFileSync(path.join(__dirname, '../app/src/main/assets/index.html'), 'utf8');
 const m = /<script id="tm2-rdzen">([\s\S]*?)<\/script>/.exec(html);
 assert.ok(m, 'brak <script id="tm2-rdzen"> w index.html');
-const kontekst = {};
+const kontekst = { btoa, atob };   // jak w przeglądarce
 vm.createContext(kontekst);
 vm.runInContext(m[1], kontekst);
 const T = kontekst.TM2;
@@ -119,6 +119,69 @@ test('opis zakresów jak na Macu', () => {
   assert.strictEqual(T.opisZakresu(T.POLA_SLOTU[2]), 'L15 … R15');
   assert.strictEqual(T.INSTRUMENTY.length, 162);
   assert.strictEqual(T.LISTY.typPrzesteru.length, 25);
+});
+
+test('kopiowanie i zamiana kitów razem ze ścieżkami WAV, jedno cofnięcie', () => {
+  const b = new T.Backup(dane('wav-1.bin'));
+  const org = Buffer.from(b.b);
+  const nazwa70 = b.nazwaKitu(70), nazwa1 = b.nazwaKitu(1);
+  b.kopiujKit(70, 5);
+  assert.strictEqual(b.nazwaKitu(5), nazwa70);
+  assert.strictEqual(b.sciezkaSampla(5, 1), 'TEST_A.wav');
+  assert.strictEqual(b.zmiany.length, 1);
+  b.cofnij();
+  assert.deepStrictEqual(Buffer.from(b.b), org);
+  b.zamienKity(1, 70);
+  assert.strictEqual(b.nazwaKitu(1), nazwa70);
+  assert.strictEqual(b.nazwaKitu(70), nazwa1);
+  assert.strictEqual(b.sciezkaSampla(1, 2), 'TEST_B.wav');
+  assert.strictEqual(b.sciezkaSampla(70, 1), null);
+  b.zamienKity(1, 70);
+  assert.deepStrictEqual(Buffer.from(b.b.subarray(0, -16)), org.subarray(0, -16), 'dwie zamiany = stan wyjściowy');
+  // globalne (SYSTEM, wejścia) nietknięte
+  assert.deepStrictEqual(Buffer.from(b.b.subarray(0, 0x7C)), org.subarray(0, 0x7C));
+});
+
+test('presety: zapis, plik biblioteki, zastosowanie na innym kicie', () => {
+  const b = new T.Backup(dane('wav-1.bin'));
+  const p = b.presetKitu(70, 'Testowy');
+  assert.strictEqual(p.paths[0], 'TEST_A.wav');
+  const plik = T.plikPresetow([p]);
+  const wczytane = T.czytajPresety(plik);
+  assert.strictEqual(wczytane.length, 1);
+  b.zastosujPreset(wczytane[0], 12);
+  assert.strictEqual(b.nazwaKitu(12), b.nazwaKitu(70));
+  assert.strictEqual(b.sciezkaSampla(12, 1), 'TEST_A.wav');
+  assert.deepStrictEqual(Buffer.from(b.b.subarray(b.kitOd(12), b.kitOd(12) + 234)), Buffer.from(b.b.subarray(b.kitOd(70), b.kitOd(70) + 234)));
+  assert.throws(() => T.czytajPresety('{"x":1}'));
+  assert.strictEqual(T.czytajPresety(JSON.stringify({ format: 'TM2Editor-KitPresets', version: 1, presets: [{ name: 'zły', kit: 'AAAA', paths: ['', '', '', ''] }] })).length, 0);
+});
+
+test('szukanie kitów po nazwie i pliku WAV', () => {
+  const b = new T.Backup(dane('wav-1.bin'));
+  assert.deepStrictEqual(Array.from(b.szukaj('test_c')), [70]);
+  assert.ok(b.szukaj('ciecho').includes(1));
+  assert.strictEqual(b.szukaj('').length, 99);
+});
+
+test('nowy backup: 99 × New Kit jak na module, poprawna suma, ustawienia z otwartego', () => {
+  const baza = dane('baza-2026-11-21.bin');
+  const n = T.Backup.nowy();
+  assert.strictEqual(JSON.stringify(T.Backup.sprawdz(n.b)), '{"blad":false,"uwagi":[]}');
+  assert.strictEqual(n.maNiezapisane, true);
+  for (let k = 1; k <= 99; k++) {
+    assert.strictEqual(n.nazwaKitu(k), 'New Kit');
+    assert.deepStrictEqual(Buffer.from(n.b.subarray(n.kitOd(k), n.kitOd(k) + 234)), Buffer.from(baza.subarray(0x7C + 51 * 234, 0x7C + 52 * 234)));
+  }
+  assert.strictEqual(n.biezacyKit(), 1);
+  assert.strictEqual(n.wszystkieSample().length, 0);
+  const sys = T.POLA_SYSTEMU.find((p) => p.id === 'file.backupName');
+  assert.strictEqual(n.wartosc(sys), 'Backup');
+  const zOtwartego = T.Backup.nowy(dane('system-a.bin'));
+  assert.deepStrictEqual(Buffer.from(zOtwartego.b.subarray(0x2C, 0x36)), Buffer.from(dane('system-a.bin').subarray(0x2C, 0x36)));
+  assert.strictEqual(zOtwartego.b[0x36], 0);
+  n.oznaczZapisane();
+  assert.strictEqual(n.maNiezapisane, false);
 });
 
 console.log(`\n${liczba} testów — wszystkie przeszły.`);

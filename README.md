@@ -29,6 +29,10 @@ wtedy do Pobranych) — wygodne do sprawdzania zmian bez telefonu.
 - brzmienia padów: 162 wewnętrzne albo plik WAV z karty (po ścieżce w `ROLAND/TM-2/WAVE`), Level, Pitch, Pan, Mute Group, Note, Loop, Dynamics, Mono/Poly, Effect Send, Offset,
 - ustawienia wejść: typ pada (z wartościami domyślnymi), Input, Rim Gain, H/R Adjust, Noise Cancel, Sensitivity, Threshold, Curve, Retrig Cancel, XTLK Cancel,
 - SYSTEM: nazwa backupu, Contrast, Brightness, Battery, Limiter, OutGain, TrgPreview, Trig Lock, MIDI Ch, PrgChg Rx/Tx,
+- kity jako całość: kopiowanie na inny kit, zamiana miejscami (razem z nazwami plików WAV),
+- presety kitów: biblioteka w aplikacji, import/eksport pliku `.tm2kits.json` — ten sam format co na Macu,
+- wyszukiwanie kitów po numerze, nazwie i nazwie pliku WAV,
+- nowy backup: 99 pustych kitów („New Kit", jak na module), ustawienia SYSTEM i wejść z otwartego backupu,
 - lista zmian, cofnij / ponów, cofnij wszystko,
 - zapis zawsze jako **nowy plik** z poprawną sumą MD5 — oryginału nigdy nie nadpisuje.
 
