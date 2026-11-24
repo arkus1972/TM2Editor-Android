@@ -13,6 +13,7 @@
   --tlo: #f2f2f5; --karta: #ffffff; --tekst: #16161a; --opis: #6b6b76; --linia: #e1e1e8;
   --akcent: #e8590c; --akcent-tekst: #ffffff; --pole: #f4f4f7; --ostrzezenie: #b45309; --zmiana: #2563eb;
   --cien: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+  --zaznaczenie: #371F22;
   --f-etykieta: 17px; --f-wartosc: 17px; --f-opis: 14px; --f-tytul: 20px;
 }
 @media (prefers-color-scheme: dark) {
@@ -144,12 +145,13 @@ dialog.pelny[open] { display: flex; }
 .pozycja-kitu .nr { color: var(--opis); font-variant-numeric: tabular-nums; width: 26px; }
 .pozycja-kitu .nazwa { flex: 1; min-width: 0; }
 .pozycja-kitu .pliki { display: block; font-weight: 400; font-size: var(--f-opis); color: var(--opis); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pozycja-kitu.biezacy { background: color-mix(in srgb, var(--akcent) 14%, transparent); border-radius: 10px; }
+.pozycja-kitu.biezacy { background: var(--zaznaczenie); color: #fff; border-radius: 10px; }
+.pozycja-kitu.biezacy .nr, .pozycja-kitu.biezacy .pliki, .pozycja-kitu.biezacy .uchwyt { color: rgba(255,255,255,.75); }
 .pozycja-kitu .uchwyt { width: 44px; height: 44px; margin: -6px -6px -6px 0; display: flex; align-items: center; justify-content: center;
   color: var(--opis); font-size: 22px; touch-action: none; cursor: grab; flex-shrink: 0; }
 .pozycja-kitu.przeciagany { opacity: .45; }
-.pozycja-kitu.cel-nad { box-shadow: inset 0 3px 0 var(--akcent); }
-.pozycja-kitu.cel-pod { box-shadow: inset 0 -3px 0 var(--akcent); }
+.pozycja-kitu.cel { background: var(--zaznaczenie); color: #fff; box-shadow: inset 0 0 0 2px var(--akcent); border-radius: 10px; }
+.pozycja-kitu.cel .nr, .pozycja-kitu.cel .pliki, .pozycja-kitu.cel .uchwyt { color: rgba(255,255,255,.75); }
 .podpowiedz-listy { color: var(--opis); font-size: var(--f-opis); padding: 6px 8px 2px; }
 .pozycja-kitu .sd { font-size: 12px; font-weight: 700; color: var(--akcent); border: 1px solid var(--akcent); border-radius: 6px; padding: 1px 5px; }
 .wybor-kitu { flex: 1; min-width: 0; height: 44px; border-radius: 12px; border: 1px solid var(--linia); background: var(--karta); padding: 0 12px;
@@ -1610,7 +1612,7 @@ dialog.pelny[open] { display: flex; }
     const lista = () => $('#lista-kitow');
     let cel = null, przewijanie = null, ostatnieY = 0;
     const wyczysc = () => {
-      lista().querySelectorAll('.cel-nad, .cel-pod').forEach((x) => x.classList.remove('cel-nad', 'cel-pod'));
+      lista().querySelectorAll('.cel').forEach((x) => x.classList.remove('cel'));
     };
     const wskaz = (x, y) => {
       ostatnieY = y;
@@ -1619,13 +1621,11 @@ dialog.pelny[open] { display: flex; }
       const r = nad && nad.closest('.pozycja-kitu');
       cel = null;
       if (!r || r === wiersz) return;
+      // Cały wiersz, nad którym wisi palec, to miejsce upuszczenia: kit
+      // trafia na jego pozycję, kity pomiędzy przesuwają się o jedno.
       const k = Number(r.dataset.kit);
-      const prost = r.getBoundingClientRect();
-      const przed = y < prost.top + prost.height / 2;
-      r.classList.add(przed ? 'cel-nad' : 'cel-pod');
-      // Numer pozycji po upuszczeniu, licząc z tym, że kit znika ze swojego miejsca.
-      cel = kit < k ? (przed ? k - 1 : k) : (przed ? k : k + 1);
-      if (cel === kit) cel = null;
+      r.classList.add('cel');
+      cel = k;
     };
     const przewijajPrzyKrawedzi = () => {
       const l = lista(), p = l.getBoundingClientRect();
